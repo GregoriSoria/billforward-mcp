@@ -1,0 +1,118 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { bfClient } from "../../billforward.js";
+
+/**
+ * REQUISIÇÃO DO USUÁRIO: "me detalhe como vai funcionar esse seu search. n quero q fique muito pesado ou demorado pra executar."
+ * 
+ * ARQUITETURA DA FERRAMENTA DE BUSCA UNIFICADA:
+ * 
+ * 1. Execução Paralela: Utilizamos Promise.all para disparar buscas em Accounts, Subscriptions e Invoices simultaneamente.
+ * 2. Roteamento Inteligente: 
+ *    - Se a query parece um Email, prioriza a busca direta por email (muito rápida).
+ *    - Se a query parece um ID (ACC-, SUB-, INV-), tenta o GET direto.
+ * 3. Filtragem por Metadados: Busca nos campos 'metadata' de todas as entidades em paralelo.
+ * 4. Limitação de Resultados: Retornamos apenas os top 5 resultados de cada categoria para manter a resposta leve.
+ */
+
+export function registerSearchTools(server: McpServer) {
+  server.registerTool(
+    "search",
+    {
+      description: "Perform a lightweight unified search across Accounts, Subscriptions, and Invoices. Automatically detects emails, IDs, or falls back to metadata/name filtering.",
+      inputSchema: {
+        query: z.string().describe("The search term (email, name, ID, or metadata value)"),
+        limit: z.number().optional().default(5).describe("Max results per category (default 5)")
+      }
+    },
+    async ({ query, limit }) => {
+      try {
+        const results: any = {
+          accounts: [],
+          subscriptions: [],
+          invoices: []
+        };
+
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query);
+        const isAccId = /^ACC-[A-Z0-9-]+$/.test(query);
+        const isSubId = /^SUB-[A-Z0-9-]+$/.test(query);
+        const isInvId = /^INV-[A-Z0-9-]+$/.test(query);
+
+        const tasks = [];
+
+        // 1. Account Search Logic
+        if (isEmail) {
+          tasks.push(
+            bfClient.get(`/accounts/email/${query}`)
+              .then(res => results.accounts.push(res.data.results[0]))
+              .catch(() => {})
+          );
+        } else if (isAccId) {
+          tasks.push(
+            bfClient.get(`/accounts/${query}`)
+              .then(res => results.accounts.push(res.data.results[0]))
+              .catch(() => {})
+          );
+        } else {
+          // Standard metadata/name scan
+          tasks.push(
+            bfClient.get("/accounts", { params: { records: limit, filter: query } })
+              .then(res => results.accounts.push(...(res.data.results || [])))
+              .catch(() => {})
+          );
+        }
+
+        // 2. Subscription Search Logic (Metadata focus)
+        if (isSubId) {
+          tasks.push(
+            bfClient.get(`/subscriptions/${query}`)
+              .then(res => results.subscriptions.push(res.data.results[0]))
+              .catch(() => {})
+          );
+        } else {
+          // Cross-reference: If we find an account, we usually want its subs
+          // But for "Unified Search", we also check metadata directly
+          tasks.push(
+            bfClient.get("/subscriptions", { params: { records: limit, filter: query } })
+              .then(res => results.subscriptions.push(...(res.data.results || [])))
+              .catch(() => {})
+          );
+        }
+
+        // 3. Invoice Search Logic
+        if (isInvId) {
+          tasks.push(
+            bfClient.get(`/invoices/${query}`)
+              .then(res => results.invoices.push(res.data.results[0]))
+              .catch(() => {})
+          );
+        } else {
+          tasks.push(
+            bfClient.get("/invoices", { params: { records: limit, filter: query } })
+              .then(res => results.invoices.push(...(res.data.results || [])))
+              .catch(() => {})
+          );
+        }
+
+        // Wait for all parallel probes
+        await Promise.all(tasks);
+
+        // Cleanup empty results
+        const output = {
+          accounts: (results.accounts || []).filter(Boolean),
+          subscriptions: (results.subscriptions || []).filter(Boolean),
+          invoices: (results.invoices || []).filter(Boolean)
+        };
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output, null, 2) }]
+        };
+      } catch (error: any) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: `Search failed: ${error.message}` }]
+        };
+      }
+    }
+  );
+}

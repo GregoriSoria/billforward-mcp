@@ -1,0 +1,37 @@
+{
+  "currentPage": 0,
+  "currentOffset": 0,
+  "recordsRequested": 1,
+  "recordsReturned": 1,
+  "executionTime": 32348868,
+  "results": [
+    {
+      "@type": "receipt",
+      "id": "REC-92E48383-5B8B-38F0-0215-0499CB96",
+      "created": "2026-02-27T17:59:24Z",
+      "changedBy": "System",
+      "crmID": "PAY-41364A83-5B8A-39EC-0C65-1DD8B1DB",
+      "invoiceID": "INV-497C2ADC-5035-B313-3492-C437BD20",
+      "gatewayReferenceID": "PAY-41364A83-5B8A-39EC-0C65-1DD8B1DB",
+      "accountID": "ACC-ADB5D3C6-FA7C-8734-7D35-D9A805B5",
+      "paymentID": "PAY-41364A83-5B8A-39EC-0C65-1DD8B1DB",
+      "organizationID": "ORG-878694E8-F0F2-4DCD-90D5-6C5F9F77",
+      "cardholderName": "",
+      "cardLastFour": "",
+      "cardDescription": "",
+      "cardCountry": "",
+      "cardProvince": "",
+      "cardType": "",
+      "type": "debit",
+      "currency": "TOK",
+      "value": 0,
+      "paymentGateway": "offline",
+      "invoiceType": "Subscription",
+      "executionAttempt": 0,
+      "decision": "Accept",
+      "reasonCode": 100,
+      "rawData": "{\"state\":\"Paid\",\"gatewayResponse\":{\"offlineType\":\"Other\",\"name\":\"Payment for invoice (ID:INV-497C2ADC-5035-B313-3492-C437BD20)\",\"id\":\"PAY-41364A83-5B8A-39EC-0C65-1DD8B1DB\",\"accountID\":\"ACC-ADB5D3C6-FA7C-8734-7D35-D9A805B5\",\"subscriptionID\":\"SUB-F630E684-1969-9617-F35E-631EC91F\",\"invoiceID\":\"INV-497C2ADC-5035-B313-3492-C437BD20\",\"organizationID\":\"ORG-878694E8-F0F2-4DCD-90D5-6C5F9F77\",\"gateway\":\"offline\",\"currency\":\"XXX\",\"nominalValue\":0,\"actualValue\":0,\"remainingValue\":0.00,\"paymentReceived\":\"Feb 27, 2026, 5:59:23 PM\",\"refundedValue\":0,\"type\":\"debit\",\"metadataKeyValueMap\":{}}}",
+      "subscriptionID": "SUB-F630E684-1969-9617-F35E-631EC91F"
+    }
+  ]
+}

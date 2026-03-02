@@ -1,0 +1,90 @@
+{
+  "currentPage": 0,
+  "currentOffset": 0,
+  "recordsRequested": 1,
+  "recordsReturned": 1,
+  "executionTime": 23488069,
+  "results": [
+    {
+      "@type": "subscription",
+      "id": "SUB-604915D4-C20C-C3F0-6C10-6A9C7B20",
+      "versionID": "SUB-604915D4-C20C-C3F0-6C10-6A9C7B20",
+      "created": "2026-02-27T13:15:51Z",
+      "changedBy": "20617CE1-A5FD-4F6C-8F99-007B39A7560B",
+      "updated": "2026-02-27T13:17:08Z",
+      "metadata": {
+        "active_renewal_id": "ae889aa2-e72e-4ca0-8c5b-e702f964b361",
+        "onboarding_users": "larissa.souza_merccreditbillng@cialdnb.com",
+        "due_date": "2026-02-27T13:15:50.000+0000",
+        "days_until_due": 0,
+        "payment_terms": "default",
+        "current_period_end": "2027-02-27T13:15:50.000+0000",
+        "Provisioned_From_Opportunity": "006O300000e0C3nIAE",
+        "opal_contract_key": "977480",
+        "current_period_start": "2026-02-27T13:15:50.000+0000",
+        "dunsguide_onboarding_flow_id": "21388378-acf6-46bb-aef6-7a9ce8fc071b"
+      },
+      "accountID": "ACC-A18DE703-C1C7-7D6B-01E7-C9A844CA",
+      "organizationID": "ORG-878694E8-F0F2-4DCD-90D5-6C5F9F77",
+      "productID": "PRO-67BE6510-75A4-E847-C31B-B673E84F",
+      "productRatePlanID": "PRP-1CA4EDEB-A3E6-6E15-437F-2B3438AF",
+      "name": "Plataforma Dunsguide Silver 2 anos + Pulso",
+      "description": "Plataforma Dunsguide Silver 2 anos + Pulso",
+      "type": "Subscription",
+      "state": "AwaitingPayment",
+      "active": true,
+      "currentPeriodStart": "2026-02-27T13:15:50Z",
+      "currentPeriodEnd": "2028-02-27T13:15:50Z",
+      "contractStart": "2026-02-27T13:15:50Z",
+      "initialPeriodStart": "2026-02-27T13:15:50Z",
+      "successfulPeriods": 0,
+      "totalPeriods": 1,
+      "totalVersionPeriods": 1,
+      "dunning": true,
+      "managedBy": "BillForward",
+      "versionStart": "2026-02-27T13:15:50Z",
+      "versionNumber": 1,
+      "creditEnabled": true,
+      "aggregateAllSubscriptionsOnAccount": false,
+      "failedPaymentBehaviour": "None",
+      "pricingComponentValues": [
+        {
+          "@type": "pricingComponentValue",
+          "id": "PCV-96A3977F-C228-AAF0-377A-E41340D3",
+          "versionID": "PCV-96A3977F-C228-AAF0-377A-E41340D3",
+          "created": "2026-02-27T13:15:51Z",
+          "changedBy": "8301D745-9B35-4BB3-A2FF-1C3D2207F73C",
+          "updated": "2026-02-27T13:15:51Z",
+          "pricingComponentID": "PCO-F0B9643E-88B4-6842-70F7-51DC151F",
+          "pricingComponentName": "dunsguide",
+          "subscriptionID": "SUB-604915D4-C20C-C3F0-6C10-6A9C7B20",
+          "organizationID": "ORG-878694E8-F0F2-4DCD-90D5-6C5F9F77",
+          "value": 1,
+          "inferredFromDefault": false
+        }
+      ],
+      "paymentMethodSubscriptionLinks": [],
+      "fixedTerms": [
+        {
+          "id": "8C5022DB-5A3E-4281-A38E-824A2A02F6A8",
+          "created": "2026-02-27T13:15:51Z",
+          "changedBy": "8301D745-9B35-4BB3-A2FF-1C3D2207F73C",
+          "updated": "2026-02-27T13:15:51Z",
+          "subscriptionID": "SUB-604915D4-C20C-C3F0-6C10-6A9C7B20",
+          "subscriptionVersionID": "SUB-604915D4-C20C-C3F0-6C10-6A9C7B20",
+          "organizationID": "ORG-878694E8-F0F2-4DCD-90D5-6C5F9F77",
+          "expiryBehaviour": "ExpireSubscription",
+          "periods": 1,
+          "deleted": false,
+          "versionOverridePlanID": "PRP-7ACC82B5-88A4-95C1-B6EF-AABEC4C2"
+        }
+      ],
+      "contracts": [],
+      "currentTime": "2026-02-27T18:03:00Z",
+      "timeOffset": 0,
+      "paymentTerms": 0,
+      "affiliateSubscriptionRelationship": [],
+      "fixedTerm": false
+    }
+  ]
+}

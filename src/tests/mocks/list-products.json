@@ -1,0 +1,30 @@
+{
+  "currentPage": 0,
+  "currentOffset": 0,
+  "recordsRequested": 1,
+  "recordsReturned": 1,
+  "totalRecords": 103,
+  "executionTime": 18946807,
+  "results": [
+    {
+      "@type": "product",
+      "id": "PRO-A4D8A59E-73F2-2837-BA10-97C05C74",
+      "created": "2024-05-08T17:05:06Z",
+      "changedBy": "36866A86-94DA-4DD9-B22B-294DC3266A43",
+      "updated": "2024-05-08T17:05:06Z",
+      "metadata": {},
+      "organizationID": "ORG-878694E8-F0F2-4DCD-90D5-6C5F9F77",
+      "name": "fast_run_ConoSur",
+      "path": "fast_run_ConoSur",
+      "description": "fast_run_ConoSur",
+      "duration": 24,
+      "durationPeriod": "minutes",
+      "trial": 0,
+      "trialPeriod": "none",
+      "productType": "recurring",
+      "deleted": false,
+      "startDate": "2024-05-08T17:05:06Z",
+      "paymentTerms": 0
+    }
+  ]
+}

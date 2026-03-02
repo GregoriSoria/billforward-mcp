@@ -1,0 +1,62 @@
+{
+  "currentPage": 0,
+  "currentOffset": 0,
+  "recordsRequested": 10,
+  "recordsReturned": 1,
+  "executionTime": 28056330,
+  "results": [
+    {
+      "@type": "account",
+      "id": "ACC-9751B761-21FC-1E17-836C-9189EFA8",
+      "created": "2026-02-25T18:52:22Z",
+      "changedBy": "29C4CA2C-34F2-4BEE-B282-6CEB71DDB16C",
+      "updated": "2026-02-25T20:28:04Z",
+      "crmID": null,
+      "organizationID": "ORG-878694E8-F0F2-4DCD-90D5-6C5F9F77",
+      "successfulSubscriptions": 2,
+      "aggregatingProductRatePlanID": "PRP-7B49F746-5D28-1A68-4CFD-504796D8",
+      "deleted": false,
+      "profile": {
+        "@type": "profile",
+        "id": "PRF-5218299E-2204-6958-6258-206BFC8B",
+        "created": "2026-02-25T18:52:22Z",
+        "changedBy": "20617CE1-A5FD-4F6C-8F99-007B39A7560B",
+        "updated": "2026-02-25T19:42:06Z",
+        "accountID": "ACC-9751B761-21FC-1E17-836C-9189EFA8",
+        "organizationID": "ORG-878694E8-F0F2-4DCD-90D5-6C5F9F77",
+        "email": "andre.faggion+over@cialdnb.com",
+        "firstName": "Andre",
+        "lastName": "Faggion",
+        "companyName": "AFF Product Management 2026",
+        "addresses": [
+          {
+            "@type": "address",
+            "id": "ADD-D03778AB-D16F-F8FD-D2F0-2A40349E",
+            "created": "2026-02-25T19:13:52Z",
+            "changedBy": "System",
+            "updated": "2026-02-25T20:27:19Z",
+            "profileID": "PRF-5218299E-2204-6958-6258-206BFC8B",
+            "organizationID": "ORG-878694E8-F0F2-4DCD-90D5-6C5F9F77",
+            "addressLine1": "Rua Prefeito Plácido Machado 105",
+            "addressLine2": "PR",
+            "city": "Pato Branco",
+            "country": "BR",
+            "postcode": "85505-190",
+            "landline": "48999770856",
+            "primaryAddress": true,
+            "primaryShippingAddress": true,
+            "deleted": false,
+            "validated": false
+          }
+        ],
+        "mobile": "",
+        "landline": "48999770856",
+        "fax": "",
+        "correspondenceLanguage": "en-US",
+        "applyTax": true,
+        "invoiceTemplateConfigID": "6F7A7834-8660-4A25-B521-D44BE3E12549"
+      },
+      "paymentMethods": []
+    }
+  ]
+}

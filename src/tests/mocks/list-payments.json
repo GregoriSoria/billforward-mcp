@@ -1,0 +1,30 @@
+{
+  "currentPage": 0,
+  "currentOffset": 0,
+  "recordsRequested": 1,
+  "recordsReturned": 1,
+  "executionTime": 34619363,
+  "results": [
+    {
+      "@type": "offlinePayment",
+      "id": "PAY-41364A83-5B8A-39EC-0C65-1DD8B1DB",
+      "created": "2026-02-27T17:59:24Z",
+      "changedBy": "System",
+      "updated": "2026-02-27T17:59:24Z",
+      "accountID": "ACC-ADB5D3C6-FA7C-8734-7D35-D9A805B5",
+      "subscriptionID": "SUB-F630E684-1969-9617-F35E-631EC91F",
+      "invoiceID": "INV-497C2ADC-5035-B313-3492-C437BD20",
+      "organizationID": "ORG-878694E8-F0F2-4DCD-90D5-6C5F9F77",
+      "gateway": "offline",
+      "currency": "TOK",
+      "nominalValue": 0,
+      "actualValue": 0,
+      "paymentReceived": "2026-02-27T17:59:23Z",
+      "refundedValue": 0,
+      "type": "debit",
+      "name": "Payment for invoice (ID:INV-497C2ADC-5035-B313-3492-C437BD20)",
+      "offlinePaymentType": "Other",
+      "remainingNominalValue": 0
+    }
+  ]
+}

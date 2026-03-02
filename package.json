@@ -1,6 +1,6 @@
 {
   "name": "billforward-mcp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A Model Context Protocol (MCP) server for integrating Billforward's billing API with LLMs.",
   "main": "build/index.js",
   "type": "module",
@@ -16,13 +16,21 @@
   "files": [
     "build"
   ],
-  "keywords": [],
+  "keywords": [
+    "billforward",
+    "mcp",
+    "model-context-protocol",
+    "billing",
+    "llm",
+    "ai",
+    "agent",
+    "api"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "axios": "^1.13.5",
-    "zod": "^4.3.6"
+    "axios": "^1.13.5"
   },
   "devDependencies": {
     "@types/node": "^25.3.1",

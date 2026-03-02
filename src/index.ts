@@ -1,15 +1,22 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { bfClient } from "./billforward.js";
 
-import { z } from "zod";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const pkgPath = path.resolve(__dirname, "../package.json");
+const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
 
 // Initialize the MCP server
 const server = new McpServer({
   name: "Billforward",
-  version: "1.0.1",
+  version: pkg.version,
 });
+
 
 const isReadOnly = process.argv.includes('--read-only');
 

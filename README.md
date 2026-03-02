@@ -21,7 +21,7 @@ To run this server with **npx** (local or published):
       "command": "npx",
       "args": [
         "-y",
-        "C:/Projects/billforward-mcp", // If local or "@username/billforward-mcp" if published
+        "billforward-mcp",
         "--read-only"
       ],
       "env": {

@@ -39,14 +39,14 @@ export function registerGeneralTools(server: McpServer) {
     },
     async () => {
       try {
-        const response = await bfClient.get("/me");
+        const response = await bfClient.get("/organizations/mine");
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
         };
       } catch (error: any) {
         return {
           isError: true,
-          content: [{ type: "text", text: `Error fetching /me: ${error.message}` }]
+          content: [{ type: "text", text: `Error fetching /organizations/mine: ${error.message}` }]
         };
       }
     }

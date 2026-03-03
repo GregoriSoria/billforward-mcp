@@ -1,6 +1,11 @@
 # Billforward MCP Server 🚀
 
+[![npm version](https://img.shields.io/npm/v/billforward-mcp)](https://www.npmjs.com/package/billforward-mcp)
+[![npm downloads](https://img.shields.io/npm/dt/billforward-mcp)](https://www.npmjs.com/package/billforward-mcp)
+
 A high-performance Model Context Protocol (MCP) server for integrating **Billforward's** robust billing and subscription management API with LLMs.
+
+<a href="https://ko-fi.com/gregorisoria" target="_blank"><img height="36" style="border:0px;height:36px;" src="https://storage.ko-fi.com/cdn/kofi2.png?v=3" border="0" alt="Buy Me a Coffee at ko-fi.com" /></a>
 
 ## 🛠 Features
 
@@ -9,6 +14,20 @@ A high-performance Model Context Protocol (MCP) server for integrating **Billfor
 - **Security First**: Built-in `--read-only` mode to protect your data from accidental modifications.
 - **Modern SDK**: Uses the latest `@modelcontextprotocol/sdk` signatures (`registerTool`).
 - **Fully Testable**: Includes protocol compliance and unit tests via Vitest.
+
+## 🔑 How to Get Your API Token
+
+You need an API token to allow the MCP server to communicate with Billforward.
+
+1. Log in to your Billforward environment.
+2. Navigate to **Setup > Personal > API Keys**.
+3. Create a new token and copy it.
+
+**Quick Links:**
+- 🟢 [Sandbox Environment API Keys](https://app-sandbox.billforward.net/#/setup/personal/api-keys)
+- 🚀 [Production Environment API Keys](https://app.billforward.net/#/setup/personal/api-keys)
+
+---
 
 ## ⚙️ Configuration
 

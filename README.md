@@ -11,7 +11,7 @@ A high-performance Model Context Protocol (MCP) server for integrating **Billfor
 
 - **Entity Discovery**: Quickly list and inspect Accounts and Subscriptions.
 - **Protocol Purity**: Zero log leakage to `stdout`, ensuring 100% reliable JSON-RPC communication.
-- **Security First**: Built-in `--read-only` mode to protect your data from accidental modifications.
+- **Security First**: Built-in `BILLFORWARD_READ_ONLY=true` (default) mode to protect your data with instructional LLM error rejections.
 - **Modern SDK**: Uses the latest `@modelcontextprotocol/sdk` signatures (`registerTool`).
 - **Fully Testable**: Includes protocol compliance and unit tests via Vitest.
 
@@ -40,19 +40,31 @@ To run this server with **npx** (local or published):
       "command": "npx",
       "args": [
         "-y",
-        "billforward-mcp",
-        "--read-only"
+        "billforward-mcp"
       ],
       "env": {
         "BILLFORWARD_ACCESS_TOKEN": "your_private_access_token",
-        "BILLFORWARD_ENVIRONMENT": "sandbox"
+        "BILLFORWARD_ENVIRONMENT": "sandbox",
+        "BILLFORWARD_READ_ONLY": "true"
       }
     }
   }
 }
 ```
 
-*Note: Set `BILLFORWARD_ENVIRONMENT` to `"production"` when you are ready to use live data. It defaults to `"sandbox"`.*
+### Advanced Environment Variables
+
+The server behaves differently depending on these configurations:
+
+| Variable | Default Value | Description |
+|----------|---------------|-------------|
+| `BILLFORWARD_ENVIRONMENT` | `sandbox` | Sets the target API. Change to `production` when ready. |
+| `BILLFORWARD_READ_ONLY` | `true` | When true, POST/PUT actions return instructional error messages to the LLM preventing data mutation. |
+| `BILLFORWARD_PRODUCTION_URL` | `https://app.billforward.net/v1/` | Base URL used when environment is production. |
+| `BILLFORWARD_SANDBOX_URL` | `https://app-sandbox.billforward.net/v1/` | Base URL used when environment is sandbox. |
+| `BILLFORWARD_DEFAULT_RESULTS`| `10` | The default number of results parsed per paginated tool response. |
+| `BILLFORWARD_MAX_RESULTS` | `200` | The hard limit cap on how many records the LLM can ask for per tool call. |
+| `BILLFORWARD_TIMEOUT` | `15000` | Fallback timeout in milliseconds before failing a stuck Axios request. |
 
 
 ## 🧰 Available Tools
@@ -85,7 +97,8 @@ To run this server with **npx** (local or published):
 
 ## 🛡 Security
 
-Enable **Read-Only Mode** by appending `--read-only` to the `args` array. This prevents the server from registering any tool that could potentially modify your data.
+Enable **Read-Only Mode** by ensuring the environment variable `BILLFORWARD_READ_ONLY=true` is set (it is `true` by default for safety).
+If the LLM attempts to use tools like `create-account` or `update-subscription` while Read-Only is active, the operation will be blocked, and the LLM will receive a descriptive error instructing it to inform you that modifications are disabled.
 
 ## 🧪 Development
 

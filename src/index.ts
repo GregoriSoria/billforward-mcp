@@ -17,13 +17,14 @@ const server = new McpServer({
   version: pkg.version,
 });
 
+import { IS_READ_ONLY } from "./config.js";
 
-const isReadOnly = process.argv.includes('--read-only');
+const isReadOnly = IS_READ_ONLY;
 
 import { registerGeneralTools } from "./tools/overview/general.js";
 
 // --- Diagnostic & Guidance Tools ---
-registerGeneralTools(server);
+registerGeneralTools(server, isReadOnly);
 
 import { registerAccountTools } from "./tools/customers/accounts.js";
 import { registerSubscriptionTools } from "./tools/customers/subscriptions.js";

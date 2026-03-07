@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { bfClient } from "../../billforward.js";
+import { MAX_RECORDS_LIMIT, DEFAULT_RECORDS_LIMIT } from "../../config.js";
 
 export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
   server.registerTool(
@@ -8,7 +9,7 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "List merchant accounts with support for pagination, sorting, and metadata filtering. Available fields include id, crmID, userID, created, updated, and an embedded profile (email, names, address). Use metadata filtering via 'meta.key=value'.",
       inputSchema: {
-        limit: z.number().optional().default(10).describe("Number of records to return (Default: 10, Hard Max: 200)"),
+        limit: z.number().optional().default(DEFAULT_RECORDS_LIMIT).describe(`Number of records to return (Default: ${DEFAULT_RECORDS_LIMIT}, Hard Max: ${MAX_RECORDS_LIMIT})`),
         offset: z.number().optional().default(0).describe("Number of records to skip for pagination"),
         orderBy: z.string().optional().default("created").describe("Field to order results by (e.g., 'created', 'id', 'crmID')"),
         orderDirection: z.enum(["ASC", "DESC"]).optional().default("DESC").describe("Direction of sorting"),
@@ -19,7 +20,7 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
     },
     async ({ limit, offset, orderBy, orderDirection, metadata, created_after, created_before }) => {
       try {
-        const safeLimit = Math.min(limit, 200);
+        const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
         const params: any = { 
           records: safeLimit, 
           offset,
@@ -100,13 +101,13 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "List all account profiles. Profiles contain contact details like firstName, lastName, email, and address fields.",
       inputSchema: {
-        limit: z.number().optional().default(10).describe("Number of records to return (Hard Max: 200)"),
+        limit: z.number().optional().default(DEFAULT_RECORDS_LIMIT).describe(`Number of records to return (Hard Max: ${MAX_RECORDS_LIMIT})`),
         offset: z.number().optional().default(0).describe("Number of records to skip")
       }
     },
     async ({ limit, offset }) => {
       try {
-        const safeLimit = Math.min(limit, 200);
+        const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
         const response = await bfClient.get("/profiles", { 
           params: { records: safeLimit, offset } 
         });
@@ -122,65 +123,75 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
     }
   );
 
-  if (!isReadOnly) {
-    server.registerTool(
-      "create-account",
-      {
-        description: "Create a new account in Billforward. This is the first step for new customers.",
-        inputSchema: {
-          profile: z.object({
-            email: z.string().email().describe("Primary email address for the account"),
-            firstName: z.string().describe("Legal first name"),
-            lastName: z.string().describe("Legal last name")
-          }).describe("The profile information for the new account")
-        }
-      },
-      async ({ profile }) => {
-        try {
-          const response = await bfClient.post("/accounts", {
-            profile
-          });
-          return {
-            content: [{ type: "text", text: `Account created successfully:\n${JSON.stringify(response.data, null, 2)}` }]
-          };
-        } catch (error: any) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: `Error creating account: ${error.message}` }]
-          };
-        }
+  server.registerTool(
+    "create-account",
+    {
+      description: "Create a new account in Billforward. This is the first step for new customers.",
+      inputSchema: {
+        profile: z.object({
+          email: z.string().email().describe("Primary email address for the account"),
+          firstName: z.string().describe("Legal first name"),
+          lastName: z.string().describe("Legal last name")
+        }).describe("The profile information for the new account")
       }
-    );
-  
-    server.registerTool(
-      "update-account",
-      {
-        description: "Update an existing account profile. Billforward uses PUT for updates, so pass all relevant profile fields.",
-        inputSchema: {
-          accountId: z.string().describe("The UUID of the account to update"),
-          profile: z.object({
-            email: z.string().email().optional().describe("Updated email address"),
-            firstName: z.string().optional().describe("Updated first name"),
-            lastName: z.string().optional().describe("Updated last name")
-          }).describe("The updated profile fields")
-        }
-      },
-      async ({ accountId, profile }) => {
-        try {
-          const response = await bfClient.put("/accounts", {
-            id: accountId,
-            profile
-          });
-          return {
-            content: [{ type: "text", text: `Account updated successfully:\n${JSON.stringify(response.data, null, 2)}` }]
-          };
-        } catch (error: any) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: `Error updating account ${accountId}: ${error.message}` }]
-          };
-        }
+    },
+    async ({ profile }) => {
+      if (isReadOnly) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "This MCP server is currently running in Read-Only mode. Write operations (create/update/delete) are disabled and cannot be executed on the database. Please inform the user." }]
+        };
       }
-    );
-  }
+      try {
+        const response = await bfClient.post("/accounts", {
+          profile
+        });
+        return {
+          content: [{ type: "text", text: `Account created successfully:\n${JSON.stringify(response.data, null, 2)}` }]
+        };
+      } catch (error: any) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: `Error creating account: ${error.message}` }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "update-account",
+    {
+      description: "Update an existing account profile. Billforward uses PUT for updates, so pass all relevant profile fields.",
+      inputSchema: {
+        accountId: z.string().describe("The UUID of the account to update"),
+        profile: z.object({
+          email: z.string().email().optional().describe("Updated email address"),
+          firstName: z.string().optional().describe("Updated first name"),
+          lastName: z.string().optional().describe("Updated last name")
+        }).describe("The updated profile fields")
+      }
+    },
+    async ({ accountId, profile }) => {
+      if (isReadOnly) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "This MCP server is currently running in Read-Only mode. Write operations (create/update/delete) are disabled and cannot be executed on the database. Please inform the user." }]
+        };
+      }
+      try {
+        const response = await bfClient.put("/accounts", {
+          id: accountId,
+          profile
+        });
+        return {
+          content: [{ type: "text", text: `Account updated successfully:\n${JSON.stringify(response.data, null, 2)}` }]
+        };
+      } catch (error: any) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: `Error updating account ${accountId}: ${error.message}` }]
+        };
+      }
+    }
+  );
 }

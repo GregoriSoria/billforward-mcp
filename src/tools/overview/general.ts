@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { bfClient } from "../../billforward.js";
 
-export function registerGeneralTools(server: McpServer) {
+export function registerGeneralTools(server: McpServer, isReadOnly: boolean) {
   server.registerTool(
     "help",
     {
@@ -24,6 +24,8 @@ export function registerGeneralTools(server: McpServer) {
 3. **Deep Dive**: Use \`get-customer-summary query="email/ID"\` for a full 360 overview of a client.
 4. **Time Filtering**: Listing tools (accounts, subs, invoices, payments) support \`created_after\` and \`created_before\` filters for temporal analysis.
 5. **Technical Filter**: Use \`list-*\` tools with \`metadata\` for exact matching on custom keys.
+
+**CURRENT SERVER STATUS: API Write Operations are \`${isReadOnly ? "DISABLED (Read-Only)" : "ENABLED"}\`**
       `.trim();
 
       return {

@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { bfClient } from "../../billforward.js";
+import { MAX_RECORDS_LIMIT, DEFAULT_RECORDS_LIMIT } from "../../config.js";
 
 export function registerPlanTools(server: McpServer, isReadOnly: boolean) {
   server.registerTool(
@@ -8,7 +9,7 @@ export function registerPlanTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "List all products in the catalog. Products are the highest level of the billing hierarchy.",
       inputSchema: {
-        limit: z.number().optional().default(10).describe("Number of records to return (Hard Max: 200)"),
+        limit: z.number().optional().default(10).describe(`Number of records to return (Hard Max: ${MAX_RECORDS_LIMIT})`),
         offset: z.number().optional().default(0).describe("Number of records to skip"),
         orderBy: z.string().optional().default("created").describe("Field to order by"),
         orderDirection: z.enum(["ASC", "DESC"]).optional().default("DESC").describe("Direction of sorting")
@@ -16,7 +17,7 @@ export function registerPlanTools(server: McpServer, isReadOnly: boolean) {
     },
     async ({ limit, offset, orderBy, orderDirection }) => {
       try {
-        const safeLimit = Math.min(limit, 200);
+        const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
         const response = await bfClient.get("/products", { 
           params: { records: safeLimit, offset, orderBy, orderDirection } 
         });
@@ -37,7 +38,7 @@ export function registerPlanTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "List all product rate plans. Rate plans define the pricing and logic for a product subscription.",
       inputSchema: {
-        limit: z.number().optional().default(10).describe("Number of records to return (Hard Max: 200)"),
+        limit: z.number().optional().default(10).describe(`Number of records to return (Hard Max: ${MAX_RECORDS_LIMIT})`),
         offset: z.number().optional().default(0).describe("Number of records to skip"),
         orderBy: z.string().optional().default("created").describe("Field to order by"),
         orderDirection: z.enum(["ASC", "DESC"]).optional().default("DESC").describe("Direction of sorting")
@@ -45,7 +46,7 @@ export function registerPlanTools(server: McpServer, isReadOnly: boolean) {
     },
     async ({ limit, offset, orderBy, orderDirection }) => {
       try {
-        const safeLimit = Math.min(limit, 200);
+        const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
         const response = await bfClient.get("/product-rate-plans", { 
           params: { records: safeLimit, offset, orderBy, orderDirection } 
         });

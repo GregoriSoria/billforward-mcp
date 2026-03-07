@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { bfClient } from "../../billforward.js";
+import { MAX_RECORDS_LIMIT, DEFAULT_RECORDS_LIMIT } from "../../config.js";
 
 export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
   server.registerTool(
@@ -8,7 +9,7 @@ export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "List all invoices with pagination and sorting. Invoices represent a request for payment for a period of service.",
       inputSchema: {
-        limit: z.number().optional().default(10).describe("Number of records to return (Hard Max: 200)"),
+        limit: z.number().optional().default(DEFAULT_RECORDS_LIMIT).describe(`Number of records to return (Hard Max: ${MAX_RECORDS_LIMIT})`),
         offset: z.number().optional().default(0).describe("Number of records to skip for pagination"),
         orderBy: z.string().optional().default("created").describe("Field to order by (e.g., 'created', 'invoiceCost')"),
         orderDirection: z.enum(["ASC", "DESC"]).optional().default("DESC").describe("Direction of sorting"),
@@ -18,7 +19,7 @@ export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
     },
     async ({ limit, offset, orderBy, orderDirection, created_after, created_before }) => {
       try {
-        const safeLimit = Math.min(limit, 200);
+        const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
         const response = await bfClient.get("/invoices", { 
           params: { 
             records: safeLimit, 

@@ -1,11 +1,8 @@
 import axios from 'axios';
 
-const accessToken = process.env.BILLFORWARD_ACCESS_TOKEN;
-const env = (process.env.BILLFORWARD_ENVIRONMENT || 'sandbox').toLowerCase();
+import { BASE_URL, TIMEOUT_MS } from './config.js';
 
-const baseUrl = env === 'production' 
-  ? 'https://app.billforward.net/v1/' 
-  : 'https://app-sandbox.billforward.net/v1/';
+const accessToken = process.env.BILLFORWARD_ACCESS_TOKEN;
 
 // Basic interfaces for Billforward API responses
 export interface BfResponse<T> {
@@ -60,7 +57,8 @@ export interface BfProductRatePlan {
 
 // Access Token is required for the MCP server to function
 export const bfClient = axios.create({
-  baseURL: baseUrl,
+  baseURL: BASE_URL,
+  timeout: TIMEOUT_MS,
   params: {
     access_token: accessToken // Authenticate via query parameter
   },

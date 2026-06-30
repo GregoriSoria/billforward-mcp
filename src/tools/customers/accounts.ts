@@ -21,13 +21,11 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
     async ({ limit, offset, orderBy, orderDirection, metadata, created_after, created_before }) => {
       try {
         const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
-        const params: any = { 
-          records: safeLimit, 
+        const params: any = {
+          records: safeLimit,
           offset,
-          orderBy,
-          orderDirection,
-          created_after,
-          created_before
+          order_by: orderBy,
+          order: orderDirection
         };
 
         // Inject metadata filters with meta. prefix
@@ -37,7 +35,13 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
           });
         }
 
-        const response = await bfClient.get("/accounts", { params });
+        const response = (created_after || created_before)
+          ? await bfClient.get(
+              `/accounts/created/${encodeURIComponent(created_after || "1970-01-01T00:00:00")}/${encodeURIComponent(created_before || "2100-01-01T00:00:00")}`,
+              { params }
+            )
+          : await bfClient.get("/accounts", { params });
+
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
         };

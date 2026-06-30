@@ -29,7 +29,7 @@ export function registerInsightTools(server: McpServer) {
         const [account, subs, invoices] = await Promise.all([
            bfClient.get(`/accounts/${accountId}`),
            bfClient.get("/subscriptions", { params: { filter: accountId, records: 50 } }),
-           bfClient.get("/invoices", { params: { filter: accountId, records: 5, orderBy: "created", orderDirection: "DESC" } })
+           bfClient.get("/invoices", { params: { filter: accountId, records: 5, order_by: "created", order: "DESC" } })
         ]);
 
         const summary = {
@@ -78,8 +78,8 @@ export function registerInsightTools(server: McpServer) {
       try {
         // Sample last 50 accounts and subscriptions
         const [accounts, subs] = await Promise.all([
-          bfClient.get("/accounts", { params: { records: 50, orderBy: "created", orderDirection: "DESC" } }),
-          bfClient.get("/subscriptions", { params: { records: 50, orderBy: "created", orderDirection: "DESC" } })
+          bfClient.get("/accounts", { params: { records: 50, order_by: "created", order: "DESC" } }),
+          bfClient.get("/subscriptions", { params: { records: 50, order_by: "created", order: "DESC" } })
         ]);
 
         const accountKeys = new Set<string>();

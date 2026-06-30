@@ -18,8 +18,8 @@ export function registerPlanTools(server: McpServer, isReadOnly: boolean) {
     async ({ limit, offset, orderBy, orderDirection }) => {
       try {
         const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
-        const response = await bfClient.get("/products", { 
-          params: { records: safeLimit, offset, orderBy, orderDirection } 
+        const response = await bfClient.get("/products", {
+          params: { records: safeLimit, offset, order_by: orderBy, order: orderDirection }
         });
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
@@ -47,8 +47,8 @@ export function registerPlanTools(server: McpServer, isReadOnly: boolean) {
     async ({ limit, offset, orderBy, orderDirection }) => {
       try {
         const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
-        const response = await bfClient.get("/product-rate-plans", { 
-          params: { records: safeLimit, offset, orderBy, orderDirection } 
+        const response = await bfClient.get("/product-rate-plans", {
+          params: { records: safeLimit, offset, order_by: orderBy, order: orderDirection }
         });
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]

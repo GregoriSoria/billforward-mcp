@@ -79,17 +79,17 @@ The server behaves differently depending on these configurations:
 - `get-me`: Validate your connection and view profile metadata.
 
 ### 👥 Accounts
-- `list-accounts`: Fetch a paginated list of accounts (`limit`, `offset`, `metadata`, `created_after`).
+- `list-accounts`: Fetch a paginated list of accounts (`limit`, `offset`, `metadata`, `created_after`/`created_before`).
 - `get-account`: Retrieve full details for a specific UUID.
 - `get-account-by-email`: Find an account quickly by its exact email address.
 
 ### 📝 Subscriptions
-- `list-subscriptions`: Fetch a paginated list of subscriptions (`limit`, `offset`, `created_after`).
+- `list-subscriptions`: Fetch a paginated list of subscriptions (`limit`, `offset`, `period_start_after`/`period_start_before` — Billforward has no native filter on subscription creation date, so this filters by billing period start instead).
 - `get-subscription`: Retrieve full details for a specific UUID.
 
 ### 🧾 Invoices & Payments
-- `list-invoices` / `get-invoice`: Fetch invoices and draft details.
-- `list-payments` / `list-receipts`: Fetch payments and their corresponding receipts.
+- `list-invoices` / `get-invoice`: Fetch invoices and draft details. `list-invoices` supports `period_start_after`/`period_start_before` (same caveat as subscriptions — no native created-date filter exists).
+- `list-payments` / `get-payment` / `list-receipts`: Fetch payments, a single payment by ID (including the offline payment justification text in its `description` field), and receipts. `created_after`/`created_before` are supported on the list tools but Billforward has no native date filter on these endpoints, so matches are filtered client-side after fetching sorted by `created`.
 
 ### 💳 Pricing & Catalog
 - `list-products`: List the main product lines.

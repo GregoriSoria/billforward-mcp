@@ -1,0 +1,32 @@
+{
+  "currentPage": 0,
+  "currentOffset": 0,
+  "recordsRequested": 10,
+  "recordsReturned": 1,
+  "totalRecords": 1,
+  "executionTime": 12092644,
+  "results": [
+    {
+      "@type": "offlinePayment",
+      "id": "PAY-1234",
+      "created": "2025-09-04T19:03:00Z",
+      "changedBy": "F1D7795A-7C1E-4747-92AE-EA7A5ED9B03A",
+      "updated": "2025-09-04T19:03:00Z",
+      "accountID": "ACC-1234",
+      "subscriptionID": "SUB-1234",
+      "invoiceID": "INV-1234",
+      "organizationID": "ORG-1234",
+      "gateway": "offline",
+      "currency": "BRL",
+      "nominalValue": 549.0,
+      "actualValue": 549.0,
+      "paymentReceived": "2025-09-04T19:02:59Z",
+      "refundedValue": 0.0,
+      "type": "debit",
+      "description": "Example offline payment justification text",
+      "name": "Payment for invoice (ID:INV-1234)",
+      "offlinePaymentType": "Other",
+      "remainingNominalValue": 0.0
+    }
+  ]
+}

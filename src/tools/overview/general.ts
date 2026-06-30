@@ -16,13 +16,14 @@ export function registerGeneralTools(server: McpServer, isReadOnly: boolean) {
 - **Accounts**: \`list-accounts\`, \`get-account\`, \`get-account-by-email\`
 - **Subscriptions**: \`list-subscriptions\`, \`get-subscription\`
 - **Invoices**: \`list-invoices\`, \`get-invoice\`
+- **Payments**: \`list-payments\`, \`get-payment\`, \`list-receipts\`
 - **Pricing**: \`list-products\`, \`list-product-rate-plans\`
 
 ## Search & Analysis Strategy
 1. **Discover Metadata**: Run \`get-metadata-schema\` to see available custom fields for filtering.
 2. **Fast Search**: Use \`search query="keyword"\` for general discovery.
 3. **Deep Dive**: Use \`get-customer-summary query="email/ID"\` for a full 360 overview of a client.
-4. **Time Filtering**: Listing tools (accounts, subs, invoices, payments) support \`created_after\` and \`created_before\` filters for temporal analysis.
+4. **Time Filtering**: \`list-accounts\` supports real \`created_after\`/\`created_before\` filters. \`list-invoices\`/\`list-subscriptions\` only support \`period_start_after\`/\`period_start_before\` (Billforward has no native created-date filter for those resources). \`list-payments\`/\`list-receipts\` accept \`created_after\`/\`created_before\` but filter client-side since Billforward has no native date filter on those endpoints at all.
 5. **Technical Filter**: Use \`list-*\` tools with \`metadata\` for exact matching on custom keys.
 
 **CURRENT SERVER STATUS: API Write Operations are \`${isReadOnly ? "DISABLED (Read-Only)" : "ENABLED"}\`**

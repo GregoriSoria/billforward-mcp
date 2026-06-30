@@ -44,6 +44,7 @@ describe('MCP Server - Read Tools with Mocks', () => {
     mock.onGet(/\/accounts\/[a-zA-Z0-9-]+$/).reply(200, loadMock('get-account.json'));
     mock.onGet(/\/subscriptions\/[a-zA-Z0-9-]+$/).reply(200, loadMock('get-subscription.json'));
     mock.onGet(/\/invoices\/[a-zA-Z0-9-]+$/).reply(200, loadMock('get-invoice.json'));
+    mock.onGet(/\/payments\/[a-zA-Z0-9-]+$/).reply(200, loadMock('get-payment.json'));
     mock.onGet(/\/product-rate-plans\/[a-zA-Z0-9-]+$/).reply(200, loadMock('get-rate-plan.json'));
 
     server = new McpServer({
@@ -129,6 +130,13 @@ describe('MCP Server - Read Tools with Mocks', () => {
       const response = await bfClient.get("/receipts");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
+    });
+
+    it('Tool: get-payment', async () => {
+      const response = await bfClient.get("/payments/PAY-1234");
+      expect(response.status).toBe(200);
+      expect(response.data).toHaveProperty('results');
+      expect(response.data.results[0]).toHaveProperty('description');
     });
 
     it('Tool: list-products', async () => {

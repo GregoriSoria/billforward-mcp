@@ -4,7 +4,7 @@
   "description": "A Model Context Protocol (MCP) server for integrating Billforward's billing API with LLMs.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/GregoriSoria/billforward-mcp.git"
+    "url": "git+https://github.com/GregoriSoria/billforward-mcp.git"
   },
   "homepage": "https://github.com/GregoriSoria/billforward-mcp#readme",
   "bugs": {
@@ -13,7 +13,7 @@
   "main": "build/index.js",
   "type": "module",
   "bin": {
-    "billforward-mcp": "./build/index.js"
+    "billforward-mcp": "build/index.js"
   },
   "scripts": {
     "build": "tsc && pnpm test src/protocol.test.ts src/index.test.ts",

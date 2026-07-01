@@ -4,57 +4,6 @@ import { BASE_URL, TIMEOUT_MS } from './config.js';
 
 const accessToken = process.env.BILLFORWARD_ACCESS_TOKEN;
 
-// Basic interfaces for Billforward API responses
-export interface BfResponse<T> {
-  results: T[];
-}
-
-export interface BfAccount {
-  id: string;
-  name?: string;
-  email?: string;
-  [key: string]: any;
-}
-
-export interface BfSubscription {
-  id: string;
-  accountId: string;
-  state: string;
-  [key: string]: any;
-}
-
-export interface BfInvoice {
-  id: string;
-  accountId: string;
-  subscriptionId?: string;
-  state: string;
-  invoiceCost: number;
-  [key: string]: any;
-}
-
-export interface BfProfile {
-  id: string;
-  accountId: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  [key: string]: any;
-}
-
-export interface BfProduct {
-  id: string;
-  name: string;
-  description?: string;
-  [key: string]: any;
-}
-
-export interface BfProductRatePlan {
-  id: string;
-  productId: string;
-  name: string;
-  [key: string]: any;
-}
-
 // Access Token is required for the MCP server to function
 export const bfClient = axios.create({
   baseURL: BASE_URL,

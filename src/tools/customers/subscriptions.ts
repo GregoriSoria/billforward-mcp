@@ -118,7 +118,6 @@ export function registerSubscriptionTools(server: McpServer, isReadOnly: boolean
         };
       }
       try {
-        const state = cancellationAction === "Immediate" ? "Cancelled" : "Failed";
         return {
           content: [{ type: "text", text: "Cancellation logic requires exact handling. Please review BF docs. Retrying with explicit endpoint..." }]
         };

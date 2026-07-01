@@ -2,19 +2,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { bfClient } from "../../billforward.js";
 
-/**
- * REQUISIÇÃO DO USUÁRIO: "me detalhe como vai funcionar esse seu search. n quero q fique muito pesado ou demorado pra executar."
- * 
- * ARQUITETURA DA FERRAMENTA DE BUSCA UNIFICADA:
- * 
- * 1. Execução Paralela: Utilizamos Promise.all para disparar buscas em Accounts, Subscriptions e Invoices simultaneamente.
- * 2. Roteamento Inteligente: 
- *    - Se a query parece um Email, prioriza a busca direta por email (muito rápida).
- *    - Se a query parece um ID (ACC-, SUB-, INV-), tenta o GET direto.
- * 3. Filtragem por Metadados: Busca nos campos 'metadata' de todas as entidades em paralelo.
- * 4. Limitação de Resultados: Retornamos apenas os top 5 resultados de cada categoria para manter a resposta leve.
- */
-
 export function registerSearchTools(server: McpServer) {
   server.registerTool(
     "search",

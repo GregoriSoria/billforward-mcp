@@ -19,12 +19,10 @@ const server = new McpServer({
 
 import { IS_READ_ONLY } from "./config.js";
 
-const isReadOnly = IS_READ_ONLY;
-
 import { registerGeneralTools } from "./tools/overview/general.js";
 
 // --- Diagnostic & Guidance Tools ---
-registerGeneralTools(server, isReadOnly);
+registerGeneralTools(server, IS_READ_ONLY);
 
 import { registerAccountTools } from "./tools/customers/accounts.js";
 import { registerSubscriptionTools } from "./tools/customers/subscriptions.js";
@@ -36,12 +34,12 @@ import { registerSearchTools } from "./tools/search/unified.js";
 import { registerInsightTools } from "./tools/insights/customer360.js";
 
 // --- Domain Tools Registration ---
-registerAccountTools(server, isReadOnly);
-registerSubscriptionTools(server, isReadOnly);
-registerInvoiceTools(server, isReadOnly);
-registerPaymentTools(server, isReadOnly);
-registerChargeTools(server, isReadOnly);
-registerPlanTools(server, isReadOnly);
+registerAccountTools(server, IS_READ_ONLY);
+registerSubscriptionTools(server, IS_READ_ONLY);
+registerInvoiceTools(server, IS_READ_ONLY);
+registerPaymentTools(server, IS_READ_ONLY);
+registerChargeTools(server, IS_READ_ONLY);
+registerPlanTools(server, IS_READ_ONLY);
 registerSearchTools(server);
 registerInsightTools(server);
 

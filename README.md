@@ -72,7 +72,7 @@ The server behaves differently depending on these configurations:
 ### � Search & Insights
 - `search`: Parallelized unified search across Accounts, Subscriptions, and Invoices using email, ID, or keyword.
 - `get-customer-summary`: 360-degree dashboard of a customer (profile, subs, recent invoices, dunning status).
-- `get-metadata-schema`: Analyzes metadata keys in use across your environment to help filter queries.
+- `get-metadata-schema`: Analyzes metadata keys in use across Accounts, Subscriptions, and Invoices to help filter queries.
 
 ### �📖 Guidance
 - `help`: Get an overview of available entities and usage patterns.
@@ -88,7 +88,7 @@ The server behaves differently depending on these configurations:
 - `get-subscription`: Retrieve full details for a specific UUID.
 
 ### 🧾 Invoices & Payments
-- `list-invoices` / `get-invoice`: Fetch invoices and draft details. `list-invoices` supports `period_start_after`/`period_start_before` (same caveat as subscriptions — no native created-date filter exists).
+- `list-invoices` / `get-invoice`: Fetch invoices and draft details. `list-invoices` supports `period_start_after`/`period_start_before` (same caveat as subscriptions — no native created-date filter exists). Unlike accounts/subscriptions, Billforward doesn't embed invoice `metadata` in the base payload — `get-invoice` always fetches it from the dedicated metadata sub-resource; `list-invoices` fetches it per-invoice only when `includeMetadata=true` is passed (adds one extra API call per invoice, so keep `limit` small).
 - `list-payments` / `get-payment` / `list-receipts`: Fetch payments, a single payment by ID (including the offline payment justification text in its `description` field), and receipts. `created_after`/`created_before` are supported on the list tools but Billforward has no native date filter on these endpoints, so matches are filtered client-side after fetching sorted by `created`.
 
 ### 💳 Pricing & Catalog

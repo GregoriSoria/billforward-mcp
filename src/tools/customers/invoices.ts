@@ -14,10 +14,11 @@ export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
         orderBy: z.string().optional().default("created").describe("Field to order by (e.g., 'created', 'invoiceCost')"),
         orderDirection: z.enum(["ASC", "DESC"]).optional().default("DESC").describe("Direction of sorting"),
         period_start_after: z.string().optional().describe("Filter invoices whose billing period started after this ISO date (e.g. '2025-09-04T00:00:00')"),
-        period_start_before: z.string().optional().describe("Filter invoices whose billing period started before this ISO date")
+        period_start_before: z.string().optional().describe("Filter invoices whose billing period started before this ISO date"),
+        includeMetadata: z.boolean().optional().default(false).describe("Fetch and attach each invoice's metadata object. Billforward does not embed invoice metadata in the list payload, so this costs one extra API call per returned invoice — keep 'limit' small when enabling this.")
       }
     },
-    async ({ limit, offset, orderBy, orderDirection, period_start_after, period_start_before }) => {
+    async ({ limit, offset, orderBy, orderDirection, period_start_after, period_start_before, includeMetadata }) => {
       try {
         const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
         const sharedParams = { records: safeLimit, offset, order_by: orderBy, order: orderDirection };
@@ -28,6 +29,14 @@ export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
               { params: sharedParams }
             )
           : await bfClient.get("/invoices", { params: sharedParams });
+
+        if (includeMetadata && response.data.results?.length) {
+          await Promise.all(response.data.results.map(async (invoice: any) => {
+            invoice.metadata = await bfClient.get(`/invoices/${invoice.id}/metadata`)
+              .then(res => res.data)
+              .catch(() => ({}));
+          }));
+        }
 
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
@@ -44,16 +53,25 @@ export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
   server.registerTool(
     "get-invoice",
     {
-      description: "Get full details for a specific invoice. Includes line items, taxes, and payment status.",
+      description: "Get full details for a specific invoice. Includes line items, taxes, payment status, and metadata (Billforward does not embed invoice metadata in the base invoice payload, so it is fetched from the dedicated /invoices/{id}/metadata endpoint and merged in).",
       inputSchema: {
         invoiceId: z.string().describe("The unique UUID of the invoice (e.g., 'INV-XXXX-XXXX')")
       }
     },
     async ({ invoiceId }) => {
       try {
-        const response = await bfClient.get(`/invoices/${invoiceId}`);
+        const [invoiceResponse, metadataResponse] = await Promise.all([
+          bfClient.get(`/invoices/${invoiceId}`),
+          bfClient.get(`/invoices/${invoiceId}/metadata`).catch(() => null)
+        ]);
+
+        const invoice = invoiceResponse.data?.results?.[0];
+        if (invoice) {
+          invoice.metadata = metadataResponse?.data || {};
+        }
+
         return {
-          content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
+          content: [{ type: "text", text: JSON.stringify(invoiceResponse.data, null, 2) }]
         };
       } catch (error: any) {
         return {

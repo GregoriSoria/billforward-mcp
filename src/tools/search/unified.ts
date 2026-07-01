@@ -80,10 +80,19 @@ export function registerSearchTools(server: McpServer) {
         }
 
         // 3. Invoice Search Logic
+        // Billforward doesn't embed invoice metadata in the base payload (unlike accounts/subscriptions),
+        // so a direct ID match also fetches the dedicated metadata sub-resource and merges it in.
         if (isInvId) {
           tasks.push(
-            bfClient.get(`/invoices/${query}`)
-              .then(res => results.invoices.push(res.data.results[0]))
+            Promise.all([
+              bfClient.get(`/invoices/${query}`),
+              bfClient.get(`/invoices/${query}/metadata`).catch(() => null)
+            ])
+              .then(([res, metaRes]) => {
+                const invoice = res.data.results[0];
+                if (invoice) invoice.metadata = metaRes?.data || {};
+                results.invoices.push(invoice);
+              })
               .catch(() => {})
           );
         } else {

@@ -36,7 +36,7 @@ describe('MCP Server - Read Tools with Mocks', () => {
     // @ts-ignore - axios-mock-adapter version mismatch
     mock = new MockAdapter(client as any);
 
-    // Basic catch-all for bfClient
+    // Basic catch-all for the sandbox client
     mock.onGet("/accounts").reply(200, loadMock('list-accounts.json'));
     mock.onGet("/profiles").reply(200, loadMock('list-profiles.json'));
     mock.onGet("/subscriptions").reply(200, loadMock('list-subscriptions.json'));

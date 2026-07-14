@@ -65,7 +65,7 @@ export function getClient(environment?: Environment): AxiosInstance {
     const cfg = envs.get(environment);
     if (!cfg) {
       const hint = available.length
-        ? ` Available: ${available.join(', ')}.`
+        ? ` Available: ${available.join(', ')}.${available.length === 1 ? ` Omit the \`environment\` parameter to use ${available[0]} automatically.` : ''}`
         : ' No Billforward token is configured.';
       throw new Error(`The '${environment}' environment is not configured on this server.${hint}`);
     }

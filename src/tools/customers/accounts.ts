@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bfClient } from "../../billforward.js";
+import { getClient, environmentParam } from "../../billforward.js";
 import { MAX_RECORDS_LIMIT, DEFAULT_RECORDS_LIMIT } from "../../config.js";
 
 export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
@@ -9,6 +9,7 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "List merchant accounts with support for pagination, sorting, and metadata filtering. Available fields include id, crmID, userID, created, updated, and an embedded profile (email, names, address). Use metadata filtering via 'meta.key=value'.",
       inputSchema: {
+        ...environmentParam,
         limit: z.number().optional().default(DEFAULT_RECORDS_LIMIT).describe(`Number of records to return (Default: ${DEFAULT_RECORDS_LIMIT}, Hard Max: ${MAX_RECORDS_LIMIT})`),
         offset: z.number().optional().default(0).describe("Number of records to skip for pagination"),
         orderBy: z.string().optional().default("created").describe("Field to order results by (e.g., 'created', 'id', 'crmID')"),
@@ -18,8 +19,9 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
         created_before: z.string().optional().describe("Filter records created before this ISO date")
       }
     },
-    async ({ limit, offset, orderBy, orderDirection, metadata, created_after, created_before }) => {
+    async ({ environment, limit, offset, orderBy, orderDirection, metadata, created_after, created_before }) => {
       try {
+        const client = getClient(environment);
         const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
         const params: any = {
           records: safeLimit,
@@ -36,11 +38,11 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
         }
 
         const response = (created_after || created_before)
-          ? await bfClient.get(
+          ? await client.get(
               `/accounts/created/${encodeURIComponent(created_after || "1970-01-01T00:00:00")}/${encodeURIComponent(created_before || "2100-01-01T00:00:00")}`,
               { params }
             )
-          : await bfClient.get("/accounts", { params });
+          : await client.get("/accounts", { params });
 
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
@@ -59,12 +61,14 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "Find an account specifically by their email address. This is the fastest way to find a customer if you have their email.",
       inputSchema: {
+        ...environmentParam,
         email: z.string().email().describe("The exact email address of the account profile")
       }
     },
-    async ({ email }) => {
+    async ({ environment, email }) => {
       try {
-        const response = await bfClient.get(`/accounts/email/${email}`);
+        const client = getClient(environment);
+        const response = await client.get(`/accounts/email/${email}`);
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
         };
@@ -82,12 +86,14 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "Get detailed information about a specific account by ID. Contains billing contact info and linked metadata.",
       inputSchema: {
+        ...environmentParam,
         accountId: z.string().describe("The unique UUID of the account (e.g., 'ACC-XXXX-XXXX')")
       }
     },
-    async ({ accountId }) => {
+    async ({ environment, accountId }) => {
       try {
-        const response = await bfClient.get(`/accounts/${accountId}`);
+        const client = getClient(environment);
+        const response = await client.get(`/accounts/${accountId}`);
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
         };
@@ -105,14 +111,16 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "List all account profiles. Profiles contain contact details like firstName, lastName, email, and address fields.",
       inputSchema: {
+        ...environmentParam,
         limit: z.number().optional().default(DEFAULT_RECORDS_LIMIT).describe(`Number of records to return (Hard Max: ${MAX_RECORDS_LIMIT})`),
         offset: z.number().optional().default(0).describe("Number of records to skip")
       }
     },
-    async ({ limit, offset }) => {
+    async ({ environment, limit, offset }) => {
       try {
+        const client = getClient(environment);
         const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
-        const response = await bfClient.get("/profiles", { 
+        const response = await client.get("/profiles", {
           params: { records: safeLimit, offset } 
         });
         return {
@@ -132,6 +140,7 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "Create a new account in Billforward. This is the first step for new customers.",
       inputSchema: {
+        ...environmentParam,
         profile: z.object({
           email: z.string().email().describe("Primary email address for the account"),
           firstName: z.string().describe("Legal first name"),
@@ -139,7 +148,7 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
         }).describe("The profile information for the new account")
       }
     },
-    async ({ profile }) => {
+    async ({ environment, profile }) => {
       if (isReadOnly) {
         return {
           isError: true,
@@ -147,7 +156,8 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
         };
       }
       try {
-        const response = await bfClient.post("/accounts", {
+        const client = getClient(environment);
+        const response = await client.post("/accounts", {
           profile
         });
         return {
@@ -167,6 +177,7 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "Update an existing account profile. Billforward uses PUT for updates, so pass all relevant profile fields.",
       inputSchema: {
+        ...environmentParam,
         accountId: z.string().describe("The UUID of the account to update"),
         profile: z.object({
           email: z.string().email().optional().describe("Updated email address"),
@@ -175,7 +186,7 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
         }).describe("The updated profile fields")
       }
     },
-    async ({ accountId, profile }) => {
+    async ({ environment, accountId, profile }) => {
       if (isReadOnly) {
         return {
           isError: true,
@@ -183,7 +194,8 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
         };
       }
       try {
-        const response = await bfClient.put("/accounts", {
+        const client = getClient(environment);
+        const response = await client.put("/accounts", {
           id: accountId,
           profile
         });

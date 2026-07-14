@@ -1,5 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getClient } from './billforward.js';
+import { registerAccountTools } from './tools/customers/accounts.js';
+
+// Capture a registered tool's handler without a live McpServer.
+function captureHandler(registerFn: (server: any, ro: boolean) => void, toolName: string) {
+  let handler: any;
+  const fakeServer = {
+    registerTool: (name: string, _def: unknown, cb: any) => {
+      if (name === toolName) handler = cb;
+    },
+  };
+  registerFn(fakeServer, true);
+  return handler;
+}
 
 const TOKEN_VARS = [
   'BILLFORWARD_SANDBOX_ACCESS_TOKEN',
@@ -52,5 +65,20 @@ describe('getClient environment resolution', () => {
 
   it('throws with a config hint when no token is set', () => {
     expect(() => getClient()).toThrow(/No Billforward token is configured/);
+  });
+});
+
+describe('tool wiring surfaces resolver errors', () => {
+  beforeEach(() => {
+    for (const v of TOKEN_VARS) delete process.env[v];
+  });
+
+  it('list-accounts returns isError telling the LLM to choose when both envs are set', async () => {
+    process.env.BILLFORWARD_SANDBOX_ACCESS_TOKEN = 'sbx';
+    process.env.BILLFORWARD_PRODUCTION_ACCESS_TOKEN = 'prd';
+    const handler = captureHandler(registerAccountTools, 'list-accounts');
+    const res = await handler({ limit: 10, offset: 0, orderBy: 'created', orderDirection: 'DESC' });
+    expect(res.isError).toBe(true);
+    expect(res.content[0].text).toMatch(/Two environments are configured/);
   });
 });

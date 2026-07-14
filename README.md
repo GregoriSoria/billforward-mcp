@@ -43,8 +43,8 @@ To run this server with **npx** (local or published):
         "billforward-mcp"
       ],
       "env": {
-        "BILLFORWARD_ACCESS_TOKEN": "your_private_access_token",
-        "BILLFORWARD_ENVIRONMENT": "sandbox",
+        "BILLFORWARD_SANDBOX_ACCESS_TOKEN": "your_sandbox_token",
+        "BILLFORWARD_PRODUCTION_ACCESS_TOKEN": "your_production_token",
         "BILLFORWARD_READ_ONLY": "true"
       }
     }
@@ -52,13 +52,18 @@ To run this server with **npx** (local or published):
 }
 ```
 
+Configure whichever environments you have — one or both. When both are set, the LLM must pass `environment: "sandbox"` or `"production"` on each call; with only one set it is used automatically.
+
 ### Advanced Environment Variables
 
 The server behaves differently depending on these configurations:
 
 | Variable | Default Value | Description |
 |----------|---------------|-------------|
-| `BILLFORWARD_ENVIRONMENT` | `sandbox` | Sets the target API. Change to `production` when ready. |
+| `BILLFORWARD_SANDBOX_ACCESS_TOKEN` | _(none)_ | API token for the sandbox environment. |
+| `BILLFORWARD_PRODUCTION_ACCESS_TOKEN` | _(none)_ | API token for the production environment. |
+| `BILLFORWARD_ACCESS_TOKEN` | _(none)_ | **Legacy** single token. Still supported; maps to the environment named by `BILLFORWARD_ENVIRONMENT` (sandbox if unset). |
+| `BILLFORWARD_ENVIRONMENT` | `sandbox` | **Legacy** — only routes the legacy `BILLFORWARD_ACCESS_TOKEN`. Ignored once you use the per-environment tokens above. |
 | `BILLFORWARD_READ_ONLY` | `true` | When true, POST/PUT actions return instructional error messages to the LLM preventing data mutation. |
 | `BILLFORWARD_PRODUCTION_URL` | `https://app.billforward.net/v1/` | Base URL used when environment is production. |
 | `BILLFORWARD_SANDBOX_URL` | `https://app-sandbox.billforward.net/v1/` | Base URL used when environment is sandbox. |

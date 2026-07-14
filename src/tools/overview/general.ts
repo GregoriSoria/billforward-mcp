@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { bfClient } from "../../billforward.js";
+import { getClient, environmentParam } from "../../billforward.js";
+import { resolveEnvironments } from "../../config.js";
 
 export function registerGeneralTools(server: McpServer, isReadOnly: boolean) {
   server.registerTool(
@@ -8,6 +9,10 @@ export function registerGeneralTools(server: McpServer, isReadOnly: boolean) {
       description: "Get concise developer guidance on available Billforward MCP tools and entities. Use this if you are unsure which tool to use."
     },
     async () => {
+      const configured = [...resolveEnvironments().keys()];
+      const envLine = configured.length
+        ? `Configured environments: ${configured.join(", ")}.${configured.length > 1 ? " Pass \`environment\` on each tool call to choose." : ""}`
+        : "No Billforward environment is configured yet — set BILLFORWARD_SANDBOX_ACCESS_TOKEN and/or BILLFORWARD_PRODUCTION_ACCESS_TOKEN.";
       const helpText = `
 # Billforward MCP - Developer Guide
 
@@ -27,6 +32,8 @@ export function registerGeneralTools(server: McpServer, isReadOnly: boolean) {
 5. **Technical Filter**: Use \`list-*\` tools with \`metadata\` for exact matching on custom keys.
 
 **CURRENT SERVER STATUS: API Write Operations are \`${isReadOnly ? "DISABLED (Read-Only)" : "ENABLED"}\`**
+
+${envLine}
       `.trim();
 
       return {
@@ -38,11 +45,13 @@ export function registerGeneralTools(server: McpServer, isReadOnly: boolean) {
   server.registerTool(
     "get-me",
     {
-      description: "Validate API credentials and get information about the authenticated user/organization."
+      description: "Validate API credentials and get information about the authenticated user/organization.",
+      inputSchema: { ...environmentParam }
     },
-    async () => {
+    async ({ environment }) => {
       try {
-        const response = await bfClient.get("/organizations/mine");
+        const client = getClient(environment);
+        const response = await client.get("/organizations/mine");
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
         };

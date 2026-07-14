@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bfClient } from "../../billforward.js";
+import { getClient, environmentParam } from "../../billforward.js";
 
 export function registerInsightTools(server: McpServer) {
   server.registerTool(
@@ -8,16 +8,18 @@ export function registerInsightTools(server: McpServer) {
     {
       description: "Provides a 360-degree view of a customer. Combines account details, active subscriptions, credit balances, and recent invoice history into one compact dashboard. Use this for quick context before troubleshooting or churn analysis.",
       inputSchema: {
+        ...environmentParam,
         query: z.string().describe("Email or Account ID (ACC-XXXX)")
       }
     },
-    async ({ query }) => {
+    async ({ environment, query }) => {
       try {
+        const client = getClient(environment);
         let accountId = query;
-        
+
         // If it looks like an email, find account first
         if (query.includes("@")) {
-          const accResponse = await bfClient.get(`/accounts/email/${query}`);
+          const accResponse = await client.get(`/accounts/email/${query}`);
           if (accResponse.data.results && accResponse.data.results.length > 0) {
              accountId = accResponse.data.results[0].id;
           } else {
@@ -27,9 +29,9 @@ export function registerInsightTools(server: McpServer) {
 
         // Fetch multiple entities in parallel for efficiency
         const [account, subs, invoices] = await Promise.all([
-           bfClient.get(`/accounts/${accountId}`),
-           bfClient.get("/subscriptions", { params: { filter: accountId, records: 50 } }),
-           bfClient.get("/invoices", { params: { filter: accountId, records: 5, order_by: "created", order: "DESC" } })
+           client.get(`/accounts/${accountId}`),
+           client.get("/subscriptions", { params: { filter: accountId, records: 50 } }),
+           client.get("/invoices", { params: { filter: accountId, records: 5, order_by: "created", order: "DESC" } })
         ]);
 
         const summary = {
@@ -72,15 +74,16 @@ export function registerInsightTools(server: McpServer) {
     "get-metadata-schema",
     {
       description: "Analyzes recently used metadata keys across Accounts, Subscriptions, and Invoices to provide a 'cheat sheet' of available custom fields (e.g., salesforce_account_id, duns, payment_gateway_url). Use this to discover how to filter using the 'metadata' parameter.",
-      inputSchema: {}
+      inputSchema: { ...environmentParam }
     },
-    async () => {
+    async ({ environment }) => {
       try {
+        const client = getClient(environment);
         // Sample last 50 accounts and subscriptions (metadata is embedded directly in these list payloads)
         const [accounts, subs, invoices] = await Promise.all([
-          bfClient.get("/accounts", { params: { records: 50, order_by: "created", order: "DESC" } }),
-          bfClient.get("/subscriptions", { params: { records: 50, order_by: "created", order: "DESC" } }),
-          bfClient.get("/invoices", { params: { records: 20, order_by: "created", order: "DESC" } })
+          client.get("/accounts", { params: { records: 50, order_by: "created", order: "DESC" } }),
+          client.get("/subscriptions", { params: { records: 50, order_by: "created", order: "DESC" } }),
+          client.get("/invoices", { params: { records: 20, order_by: "created", order: "DESC" } })
         ]);
 
         const accountKeys = new Set<string>();
@@ -98,7 +101,7 @@ export function registerInsightTools(server: McpServer) {
         // Invoices don't embed metadata in the list payload, so each one needs its own
         // /invoices/{id}/metadata call. Sample size is smaller (20 vs 50) to limit the extra round-trips.
         await Promise.all(invoices.data.results.map((inv: any) =>
-          bfClient.get(`/invoices/${inv.id}/metadata`)
+          client.get(`/invoices/${inv.id}/metadata`)
             .then(res => Object.keys(res.data || {}).forEach(k => invoiceKeys.add(k)))
             .catch(() => {})
         ));

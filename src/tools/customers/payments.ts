@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bfClient } from "../../billforward.js";
+import type { AxiosInstance } from "axios";
+import { getClient, environmentParam } from "../../billforward.js";
 import { MAX_RECORDS_LIMIT, DEFAULT_RECORDS_LIMIT } from "../../config.js";
 
 // Billforward has no server-side created-date filter for /payments or /receipts (only
@@ -11,6 +12,7 @@ const DATE_FILTER_SCAN_PAGE_SIZE = MAX_RECORDS_LIMIT;
 const DATE_FILTER_MAX_SCAN_RECORDS = 2000;
 
 async function listFilteredByCreatedRange(
+  client: AxiosInstance,
   resourcePath: string,
   { records, offset, created_after, created_before }: { records: number; offset: number; created_after?: string; created_before?: string }
 ) {
@@ -23,7 +25,7 @@ async function listFilteredByCreatedRange(
   let truncated = true;
 
   while (scanned < DATE_FILTER_MAX_SCAN_RECORDS) {
-    const response = await bfClient.get(resourcePath, {
+    const response = await client.get(resourcePath, {
       params: { records: DATE_FILTER_SCAN_PAGE_SIZE, offset: scanOffset, order_by: "created", order: "DESC" }
     });
     const page: any[] = response.data?.results ?? [];
@@ -63,6 +65,7 @@ export function registerPaymentTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "List payments across all accounts with pagination and sorting. Payments are records of money received into the system. Note: Billforward has no native created-date filter on this endpoint — when created_after/created_before are set, results are fetched sorted by created (regardless of orderBy) and filtered client-side.",
       inputSchema: {
+        ...environmentParam,
         limit: z.number().optional().default(10).describe(`Number of records to return (Hard Max: ${MAX_RECORDS_LIMIT})`),
         offset: z.number().optional().default(0).describe("Number of records to skip"),
         orderBy: z.string().optional().default("created").describe("Field to order by"),
@@ -71,13 +74,14 @@ export function registerPaymentTools(server: McpServer, isReadOnly: boolean) {
         created_before: z.string().optional().describe("Filter records created before this ISO date")
       }
     },
-    async ({ limit, offset, orderBy, orderDirection, created_after, created_before }) => {
+    async ({ environment, limit, offset, orderBy, orderDirection, created_after, created_before }) => {
       try {
+        const client = getClient(environment);
         const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
 
         const data = (created_after || created_before)
-          ? await listFilteredByCreatedRange("/payments", { records: safeLimit, offset, created_after, created_before })
-          : (await bfClient.get("/payments", { params: { records: safeLimit, offset, order_by: orderBy, order: orderDirection } })).data;
+          ? await listFilteredByCreatedRange(client, "/payments", { records: safeLimit, offset, created_after, created_before })
+          : (await client.get("/payments", { params: { records: safeLimit, offset, order_by: orderBy, order: orderDirection } })).data;
 
         return {
           content: [{ type: "text", text: JSON.stringify(data, null, 2) }]
@@ -96,12 +100,14 @@ export function registerPaymentTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "Get full details for a specific payment by ID. Includes the offline payment justification (the 'description' field) when the payment was recorded manually rather than through a gateway.",
       inputSchema: {
+        ...environmentParam,
         paymentId: z.string().describe("The unique UUID of the payment (e.g., 'PAY-XXXX-XXXX')")
       }
     },
-    async ({ paymentId }) => {
+    async ({ environment, paymentId }) => {
       try {
-        const response = await bfClient.get(`/payments/${paymentId}`);
+        const client = getClient(environment);
+        const response = await client.get(`/payments/${paymentId}`);
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
         };
@@ -119,6 +125,7 @@ export function registerPaymentTools(server: McpServer, isReadOnly: boolean) {
     {
       description: "List receipts across all accounts. Receipts usually map 1-to-1 with successful payments and provide audit data. Note: Billforward has no native created-date filter on this endpoint — when created_after/created_before are set, results are fetched sorted by created (regardless of orderBy) and filtered client-side.",
       inputSchema: {
+        ...environmentParam,
         limit: z.number().optional().default(10).describe(`Number of records to return (Hard Max: ${MAX_RECORDS_LIMIT})`),
         offset: z.number().optional().default(0).describe("Number of records to skip"),
         orderBy: z.string().optional().default("created").describe("Field to order by"),
@@ -127,13 +134,14 @@ export function registerPaymentTools(server: McpServer, isReadOnly: boolean) {
         created_before: z.string().optional().describe("Filter records created before this ISO date")
       }
     },
-    async ({ limit, offset, orderBy, orderDirection, created_after, created_before }) => {
+    async ({ environment, limit, offset, orderBy, orderDirection, created_after, created_before }) => {
       try {
+        const client = getClient(environment);
         const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
 
         const data = (created_after || created_before)
-          ? await listFilteredByCreatedRange("/receipts", { records: safeLimit, offset, created_after, created_before })
-          : (await bfClient.get("/receipts", { params: { records: safeLimit, offset, order_by: orderBy, order: orderDirection } })).data;
+          ? await listFilteredByCreatedRange(client, "/receipts", { records: safeLimit, offset, created_after, created_before })
+          : (await client.get("/receipts", { params: { records: safeLimit, offset, order_by: orderBy, order: orderDirection } })).data;
 
         return {
           content: [{ type: "text", text: JSON.stringify(data, null, 2) }]

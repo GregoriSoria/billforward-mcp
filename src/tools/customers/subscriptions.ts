@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bfClient } from "../../billforward.js";
+import { getClient, environmentParam } from "../../billforward.js";
 import { MAX_RECORDS_LIMIT, DEFAULT_RECORDS_LIMIT } from "../../config.js";
 
 export function registerSubscriptionTools(server: McpServer, isReadOnly: boolean) {
@@ -9,6 +9,7 @@ export function registerSubscriptionTools(server: McpServer, isReadOnly: boolean
     {
       description: "List all subscriptions with pagination and sorting. Use this to monitor customer subscription states (Active/Cancelled) and upcoming renewals. Note: Billforward has no native filter on subscription creation date — period_start_after/period_start_before filter by the current billing period start instead.",
       inputSchema: {
+        ...environmentParam,
         limit: z.number().optional().default(DEFAULT_RECORDS_LIMIT).describe(`Number of records to return (Hard Max: ${MAX_RECORDS_LIMIT})`),
         offset: z.number().optional().default(0).describe("Number of records to skip for pagination"),
         orderBy: z.string().optional().default("created").describe("Field to order by (e.g., 'created', 'id', 'state')"),
@@ -17,17 +18,18 @@ export function registerSubscriptionTools(server: McpServer, isReadOnly: boolean
         period_start_before: z.string().optional().describe("Filter subscriptions whose current billing period started before this ISO date")
       }
     },
-    async ({ limit, offset, orderBy, orderDirection, period_start_after, period_start_before }) => {
+    async ({ environment, limit, offset, orderBy, orderDirection, period_start_after, period_start_before }) => {
       try {
+        const client = getClient(environment);
         const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
         const sharedParams = { records: safeLimit, offset, order_by: orderBy, order: orderDirection };
 
         const response = (period_start_after || period_start_before)
-          ? await bfClient.get(
+          ? await client.get(
               `/subscriptions/period-start/${encodeURIComponent(period_start_after || "1970-01-01T00:00:00")}/${encodeURIComponent(period_start_before || "2100-01-01T00:00:00")}`,
               { params: sharedParams }
             )
-          : await bfClient.get("/subscriptions", { params: sharedParams });
+          : await client.get("/subscriptions", { params: sharedParams });
 
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
@@ -46,12 +48,14 @@ export function registerSubscriptionTools(server: McpServer, isReadOnly: boolean
     {
       description: "Get detailed state for a specific subscription by its unique ID. Includes current period start/end and pricing component states.",
       inputSchema: {
+        ...environmentParam,
         subscriptionId: z.string().describe("The UUID of the subscription (e.g., 'SUB-XXXX-XXXX')")
       }
     },
-    async ({ subscriptionId }) => {
+    async ({ environment, subscriptionId }) => {
       try {
-        const response = await bfClient.get(`/subscriptions/${subscriptionId}`);
+        const client = getClient(environment);
+        const response = await client.get(`/subscriptions/${subscriptionId}`);
         return {
           content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
         };
@@ -69,13 +73,14 @@ export function registerSubscriptionTools(server: McpServer, isReadOnly: boolean
     {
       description: "Create a new subscription for an account to a specific product rate plan.",
       inputSchema: {
+        ...environmentParam,
         accountId: z.string().describe("The UUID of the account creating the subscription"),
         productRatePlanId: z.string().describe("The UUID or data Name of the product rate plan to subscribe to"),
         name: z.string().optional().describe("Optional friendly name for the subscription"),
         state: z.enum(["Provisioned", "AwaitingPayment", "Trial"]).default("Provisioned").describe("Initial state of the subscription")
       }
     },
-    async ({ accountId, productRatePlanId, name, state }) => {
+    async ({ environment, accountId, productRatePlanId, name, state }) => {
       if (isReadOnly) {
         return {
           isError: true,
@@ -83,7 +88,8 @@ export function registerSubscriptionTools(server: McpServer, isReadOnly: boolean
         };
       }
       try {
-        const response = await bfClient.post("/subscriptions", {
+        const client = getClient(environment);
+        const response = await client.post("/subscriptions", {
           accountId,
           productRatePlanId,
           name,
@@ -106,11 +112,12 @@ export function registerSubscriptionTools(server: McpServer, isReadOnly: boolean
     {
       description: "Cancel an active subscription. By default, cancels at the end of the current billing period.",
       inputSchema: {
+        ...environmentParam,
         subscriptionId: z.string().describe("The UUID of the subscription to cancel"),
         cancellationAction: z.enum(["AtPeriodEnd", "Immediate"]).default("AtPeriodEnd").describe("When the cancellation takes effect")
       }
     },
-    async ({ subscriptionId, cancellationAction }) => {
+    async ({ environment, subscriptionId, cancellationAction }) => {
       if (isReadOnly) {
         return {
           isError: true,

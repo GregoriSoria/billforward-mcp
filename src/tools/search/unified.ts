@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bfClient } from "../../billforward.js";
+import { getClient, environmentParam } from "../../billforward.js";
 
 export function registerSearchTools(server: McpServer) {
   server.registerTool(
@@ -8,12 +8,14 @@ export function registerSearchTools(server: McpServer) {
     {
       description: "Perform a lightweight unified search across Accounts, Subscriptions, and Invoices. Automatically detects emails, IDs, or falls back to metadata/name filtering.",
       inputSchema: {
+        ...environmentParam,
         query: z.string().describe("The search term (email, name, ID, or metadata value)"),
         limit: z.number().optional().default(5).describe("Max results per category (default 5)")
       }
     },
-    async ({ query, limit }) => {
+    async ({ environment, query, limit }) => {
       try {
+        const client = getClient(environment);
         const results: any = {
           accounts: [],
           subscriptions: [],
@@ -30,20 +32,20 @@ export function registerSearchTools(server: McpServer) {
         // 1. Account Search Logic
         if (isEmail) {
           tasks.push(
-            bfClient.get(`/accounts/email/${query}`)
+            client.get(`/accounts/email/${query}`)
               .then(res => results.accounts.push(res.data.results[0]))
               .catch(() => {})
           );
         } else if (isAccId) {
           tasks.push(
-            bfClient.get(`/accounts/${query}`)
+            client.get(`/accounts/${query}`)
               .then(res => results.accounts.push(res.data.results[0]))
               .catch(() => {})
           );
         } else {
           // Standard metadata/name scan
           tasks.push(
-            bfClient.get("/accounts", { params: { records: limit, filter: query } })
+            client.get("/accounts", { params: { records: limit, filter: query } })
               .then(res => results.accounts.push(...(res.data.results || [])))
               .catch(() => {})
           );
@@ -52,7 +54,7 @@ export function registerSearchTools(server: McpServer) {
         // 2. Subscription Search Logic (Metadata focus)
         if (isSubId) {
           tasks.push(
-            bfClient.get(`/subscriptions/${query}`)
+            client.get(`/subscriptions/${query}`)
               .then(res => results.subscriptions.push(res.data.results[0]))
               .catch(() => {})
           );
@@ -60,7 +62,7 @@ export function registerSearchTools(server: McpServer) {
           // Cross-reference: If we find an account, we usually want its subs
           // But for "Unified Search", we also check metadata directly
           tasks.push(
-            bfClient.get("/subscriptions", { params: { records: limit, filter: query } })
+            client.get("/subscriptions", { params: { records: limit, filter: query } })
               .then(res => results.subscriptions.push(...(res.data.results || [])))
               .catch(() => {})
           );
@@ -72,8 +74,8 @@ export function registerSearchTools(server: McpServer) {
         if (isInvId) {
           tasks.push(
             Promise.all([
-              bfClient.get(`/invoices/${query}`),
-              bfClient.get(`/invoices/${query}/metadata`).catch(() => null)
+              client.get(`/invoices/${query}`),
+              client.get(`/invoices/${query}/metadata`).catch(() => null)
             ])
               .then(([res, metaRes]) => {
                 const invoice = res.data.results[0];
@@ -84,7 +86,7 @@ export function registerSearchTools(server: McpServer) {
           );
         } else {
           tasks.push(
-            bfClient.get("/invoices", { params: { records: limit, filter: query } })
+            client.get("/invoices", { params: { records: limit, filter: query } })
               .then(res => results.invoices.push(...(res.data.results || [])))
               .catch(() => {})
           );

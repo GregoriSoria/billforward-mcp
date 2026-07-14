@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { bfClient } from "../../billforward.js";
+import { getClient, environmentParam } from "../../billforward.js";
 
 export function registerChargeTools(server: McpServer, isReadOnly: boolean) {
   if (!isReadOnly) {
@@ -9,6 +9,7 @@ export function registerChargeTools(server: McpServer, isReadOnly: boolean) {
       {
         description: "Create a one-off charge for an account. Useful for setup fees, ad-hoc billing, etc.",
         inputSchema: {
+          ...environmentParam,
           accountId: z.string().describe("The UUID of the account to charge"),
           name: z.string().describe("Name/Description of the charge"),
           description: z.string().optional().describe("Detailed description of the charge"),
@@ -17,9 +18,10 @@ export function registerChargeTools(server: McpServer, isReadOnly: boolean) {
           invoicingType: z.enum(["Aggregated", "Immediate"]).default("Aggregated").describe("How the charge is invoiced. 'Aggregated' adds to next regular invoice, 'Immediate' generates an invoice right away.")
         }
       },
-      async ({ accountId, name, description, amount, currency, invoicingType }) => {
+      async ({ environment, accountId, name, description, amount, currency, invoicingType }) => {
         try {
-          const response = await bfClient.post("/charges", {
+          const client = getClient(environment);
+          const response = await client.post("/charges", {
             accountId,
             name,
             description,

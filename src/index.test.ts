@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import MockAdapter from 'axios-mock-adapter';
-import { bfClient } from "./billforward.js";
+import { getClient } from "./billforward.js";
+import type { AxiosInstance } from "axios";
 import fs from 'fs';
 import path from 'path';
 
@@ -13,8 +14,9 @@ import { registerPaymentTools } from "./tools/customers/payments.js";
 import { registerChargeTools } from "./tools/customers/charges.js";
 import { registerPlanTools } from "./tools/pricing/plans.js";
 
+let client: AxiosInstance;
 // @ts-ignore - bypassing strict type mismatch between axios-mock-adapter and project axios versions
-const mock = new MockAdapter(bfClient as any);
+let mock: MockAdapter;
 const mocksDir = path.join(process.cwd(), 'src', 'tests', 'mocks');
 
 function loadMock(filename: string) {
@@ -29,6 +31,11 @@ describe('MCP Server - Read Tools with Mocks', () => {
   let server: McpServer;
 
   beforeAll(() => {
+    process.env.BILLFORWARD_SANDBOX_ACCESS_TOKEN = 'test-token';
+    client = getClient('sandbox');
+    // @ts-ignore - axios-mock-adapter version mismatch
+    mock = new MockAdapter(client as any);
+
     // Basic catch-all for bfClient
     mock.onGet("/accounts").reply(200, loadMock('list-accounts.json'));
     mock.onGet("/profiles").reply(200, loadMock('list-profiles.json'));
@@ -73,86 +80,86 @@ describe('MCP Server - Read Tools with Mocks', () => {
 
   describe('Tool Endpoints Execution (Mocked)', () => {
     it('Tool: list-accounts', async () => {
-      const response = await bfClient.get("/accounts");
+      const response = await client.get("/accounts");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: get-account', async () => {
-      const response = await bfClient.get("/accounts/ACC-1234");
+      const response = await client.get("/accounts/ACC-1234");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: get-account-by-email', async () => {
-      const response = await bfClient.get("/accounts/email/test@example.com");
+      const response = await client.get("/accounts/email/test@example.com");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: list-profiles', async () => {
-      const response = await bfClient.get("/profiles");
+      const response = await client.get("/profiles");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: list-subscriptions', async () => {
-      const response = await bfClient.get("/subscriptions");
+      const response = await client.get("/subscriptions");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: get-subscription', async () => {
-      const response = await bfClient.get("/subscriptions/SUB-1234");
+      const response = await client.get("/subscriptions/SUB-1234");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: list-invoices', async () => {
-      const response = await bfClient.get("/invoices");
+      const response = await client.get("/invoices");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: get-invoice', async () => {
-      const response = await bfClient.get("/invoices/INV-1234");
+      const response = await client.get("/invoices/INV-1234");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: list-payments', async () => {
-      const response = await bfClient.get("/payments");
+      const response = await client.get("/payments");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: list-receipts', async () => {
-      const response = await bfClient.get("/receipts");
+      const response = await client.get("/receipts");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: get-payment', async () => {
-      const response = await bfClient.get("/payments/PAY-1234");
+      const response = await client.get("/payments/PAY-1234");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
       expect(response.data.results[0]).toHaveProperty('description');
     });
 
     it('Tool: list-products', async () => {
-      const response = await bfClient.get("/products");
+      const response = await client.get("/products");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: list-product-rate-plans', async () => {
-      const response = await bfClient.get("/product-rate-plans");
+      const response = await client.get("/product-rate-plans");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: get-rate-plan', async () => {
-      const response = await bfClient.get("/product-rate-plans/PRP-1234");
+      const response = await client.get("/product-rate-plans/PRP-1234");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });

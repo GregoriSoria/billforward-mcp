@@ -14,9 +14,10 @@ export type ReadDiagnostic = {
   requestId?: string;
 };
 
-const sensitiveParam = /access[_-]?token|authorization|cookie|email/i;
+const sensitiveParam = /token|authorization|cookie|email/i;
 const email = /[^\s@/]+@[^\s@/]+\.[^\s@/]+/;
 const emailGlobal = /[^\s@/]+@[^\s@/]+\.[^\s@/]+/g;
+const tokenLike = /bearer\s+\S+|(?:access[_-]?token|refresh[_-]?token|api[_-]?token|token)\s*[:=]\s*\S+|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/i;
 
 export function normalizeCompanyName(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -43,7 +44,8 @@ function recordsFrom(data: unknown) {
 }
 
 function requestId(headers: Record<string, unknown>) {
-  return headers['x-request-id'] || headers['x-correlation-id'];
+  const id = headers['x-request-id'] || headers['x-correlation-id'];
+  return typeof id === 'string' && !email.test(id) && !tokenLike.test(id) ? id : undefined;
 }
 
 function diagnosticFrom(
@@ -66,7 +68,7 @@ function diagnosticFrom(
       const value = record && typeof record === 'object' ? (record as { id?: unknown }).id : undefined;
       return typeof value === 'string' && !email.test(value) ? [value] : [];
     }),
-    ...(typeof id === 'string' ? { requestId: id } : {}),
+    ...(id ? { requestId: id } : {}),
   };
 }
 
@@ -82,7 +84,7 @@ function errorFrom(cause: unknown, resource: string, endpoint: string, params: P
     durationMs: Date.now() - started,
     records: 0,
     ids: [],
-    ...(typeof id === 'string' ? { requestId: id } : {}),
+    ...(id ? { requestId: id } : {}),
     message: typeof status === 'number' ? `HTTP ${status}` : 'Network error',
   };
 }

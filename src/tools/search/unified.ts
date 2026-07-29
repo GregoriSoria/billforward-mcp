@@ -1,116 +1,155 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getClient, environmentParam } from "../../billforward.js";
+import { MAX_RECORDS_LIMIT } from "../../config.js";
+import { normalizeCompanyName, readResource } from "../read-diagnostics.js";
+
+const COMPANY_SCAN_PAGE_SIZE = Math.min(50, MAX_RECORDS_LIMIT);
+
+type Entity = 'accounts' | 'subscriptions' | 'invoices' | 'all';
+type Match = 'exact' | 'contains';
+
+function isEntityRequested(entity: Entity, resource: Exclude<Entity, 'all'>) {
+  return entity === 'all' || entity === resource;
+}
+
+function skipped(resource: Exclude<Entity, 'all'>, message: string) {
+  return { resource, skipped: true, message };
+}
+
+function responseRecords(data: unknown): any[] {
+  return data && typeof data === 'object' && Array.isArray((data as { results?: unknown }).results)
+    ? (data as { results: any[] }).results
+    : [];
+}
+
+async function scanCompanyNames(
+  client: ReturnType<typeof getClient>,
+  query: string,
+  match: Match,
+  limit: number,
+) {
+  const accounts: any[] = [];
+  const diagnostics: unknown[] = [];
+  const errors: unknown[] = [];
+  const normalizedQuery = normalizeCompanyName(query);
+  let scanned = 0;
+  let offset = 0;
+  let truncated = false;
+
+  while (scanned < MAX_RECORDS_LIMIT && accounts.length < limit) {
+    const records = Math.min(COMPANY_SCAN_PAGE_SIZE, MAX_RECORDS_LIMIT - scanned);
+    const response = await readResource(client, 'accounts', '/accounts', {
+      records,
+      offset,
+      order_by: 'created',
+      order: 'DESC',
+    });
+    diagnostics.push(response.diagnostic);
+    if (response.error) {
+      errors.push(response.error);
+      break;
+    }
+
+    const page = responseRecords(response.data);
+    scanned += page.length;
+    offset += page.length;
+    const totalRecords = response.data && typeof response.data === 'object'
+      ? (response.data as { totalRecords?: unknown }).totalRecords
+      : undefined;
+    if (typeof totalRecords === 'number' && totalRecords > scanned) truncated = true;
+
+    for (const account of page) {
+      const companyName = account?.profile?.companyName;
+      if (typeof companyName !== 'string') continue;
+      const normalizedCompanyName = normalizeCompanyName(companyName);
+      const matched = match === 'exact'
+        ? normalizedCompanyName === normalizedQuery
+        : normalizedCompanyName.includes(normalizedQuery);
+      if (matched) {
+        accounts.push({
+          ...account,
+          match: match === 'exact' ? 'companyName-exact-local' : 'companyName-contains-local',
+          ...(match === 'contains' ? { approximate: true } : {}),
+        });
+      }
+      if (accounts.length === limit) break;
+    }
+
+    if (page.length < records) break;
+    if (scanned === MAX_RECORDS_LIMIT) truncated = true;
+  }
+
+  return { accounts, diagnostics, errors, truncated };
+}
 
 export function registerSearchTools(server: McpServer) {
   server.registerTool(
     "search",
     {
-      description: "Perform a lightweight unified search across Accounts, Subscriptions, and Invoices. Automatically detects emails, IDs, or falls back to metadata/name filtering.",
+      description: "Find exact Billforward account email/ID, subscription ID, or invoice ID. Free text is a bounded local account company-name scan; use match=contains only when an approximate company-name match is intended.",
       inputSchema: {
         ...environmentParam,
-        query: z.string().describe("The search term (email, name, ID, or metadata value)"),
-        limit: z.number().optional().default(5).describe("Max results per category (default 5)")
-      }
+        query: z.string().describe("Exact email or ID, or a company name to scan locally"),
+        entity: z.enum(['accounts', 'subscriptions', 'invoices', 'all']).default('all'),
+        match: z.enum(['exact', 'contains']).default('exact'),
+        limit: z.number().optional().default(5).describe("Max returned records (default 5)"),
+      },
     },
-    async ({ environment, query, limit }) => {
+    async ({ environment, query, entity, match, limit }) => {
       try {
         const client = getClient(environment);
-        const results: any = {
-          accounts: [],
-          subscriptions: [],
-          invoices: []
-        };
-
+        const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
+        const output: {
+          accounts: any[];
+          subscriptions: any[];
+          invoices: any[];
+          diagnostics: unknown[];
+          errors: unknown[];
+          truncated: boolean;
+        } = { accounts: [], subscriptions: [], invoices: [], diagnostics: [], errors: [], truncated: false };
         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query);
-        const isAccId = /^ACC-[A-Z0-9-]+$/.test(query);
-        const isSubId = /^SUB-[A-Z0-9-]+$/.test(query);
-        const isInvId = /^INV-[A-Z0-9-]+$/.test(query);
+        const resource = /^ACC-[A-Z0-9-]+$/.test(query) ? 'accounts'
+          : /^SUB-[A-Z0-9-]+$/.test(query) ? 'subscriptions'
+          : /^INV-[A-Z0-9-]+$/.test(query) ? 'invoices'
+          : undefined;
 
-        const tasks = [];
-
-        // 1. Account Search Logic
         if (isEmail) {
-          tasks.push(
-            client.get(`/accounts/email/${query}`)
-              .then(res => results.accounts.push(res.data.results[0]))
-              .catch(() => {})
-          );
-        } else if (isAccId) {
-          tasks.push(
-            client.get(`/accounts/${query}`)
-              .then(res => results.accounts.push(res.data.results[0]))
-              .catch(() => {})
-          );
+          if (isEntityRequested(entity, 'accounts')) {
+            const response = await readResource(client, 'accounts', `/accounts/email/${query}`);
+            output.diagnostics.push(response.diagnostic);
+            if (response.error) output.errors.push(response.error);
+            else output.accounts.push(...responseRecords(response.data).slice(0, safeLimit));
+          } else {
+            output.diagnostics.push(skipped('accounts', 'Exact email lookups apply only to accounts.'));
+          }
+        } else if (resource) {
+          if (isEntityRequested(entity, resource)) {
+            const response = await readResource(client, resource, `/${resource}/${query}`);
+            output.diagnostics.push(response.diagnostic);
+            if (response.error) output.errors.push(response.error);
+            else output[resource].push(...responseRecords(response.data).slice(0, safeLimit));
+          } else {
+            output.diagnostics.push(skipped(resource, `The exact ID belongs to ${resource}, which was not requested.`));
+          }
+        } else if (isEntityRequested(entity, 'accounts')) {
+          const scanned = await scanCompanyNames(client, query, match, safeLimit);
+          output.accounts.push(...scanned.accounts);
+          output.diagnostics.push(...scanned.diagnostics);
+          output.errors.push(...scanned.errors);
+          output.truncated = scanned.truncated;
+          if (entity === 'all') {
+            output.diagnostics.push(skipped('subscriptions', 'Free text is only supported as a local account company-name scan.'));
+            output.diagnostics.push(skipped('invoices', 'Free text is only supported as a local account company-name scan.'));
+          }
         } else {
-          // Standard metadata/name scan
-          tasks.push(
-            client.get("/accounts", { params: { records: limit, filter: query } })
-              .then(res => results.accounts.push(...(res.data.results || [])))
-              .catch(() => {})
-          );
+          output.diagnostics.push(skipped(entity as Exclude<Entity, 'all'>, 'Free text is only supported as a local account company-name scan.'));
         }
 
-        // 2. Subscription Search Logic (Metadata focus)
-        if (isSubId) {
-          tasks.push(
-            client.get(`/subscriptions/${query}`)
-              .then(res => results.subscriptions.push(res.data.results[0]))
-              .catch(() => {})
-          );
-        } else {
-          // Cross-reference: If we find an account, we usually want its subs
-          // But for "Unified Search", we also check metadata directly
-          tasks.push(
-            client.get("/subscriptions", { params: { records: limit, filter: query } })
-              .then(res => results.subscriptions.push(...(res.data.results || [])))
-              .catch(() => {})
-          );
-        }
-
-        // 3. Invoice Search Logic
-        // Billforward doesn't embed invoice metadata in the base payload (unlike accounts/subscriptions),
-        // so a direct ID match also fetches the dedicated metadata sub-resource and merges it in.
-        if (isInvId) {
-          tasks.push(
-            Promise.all([
-              client.get(`/invoices/${query}`),
-              client.get(`/invoices/${query}/metadata`).catch(() => null)
-            ])
-              .then(([res, metaRes]) => {
-                const invoice = res.data.results[0];
-                if (invoice) invoice.metadata = metaRes?.data || {};
-                results.invoices.push(invoice);
-              })
-              .catch(() => {})
-          );
-        } else {
-          tasks.push(
-            client.get("/invoices", { params: { records: limit, filter: query } })
-              .then(res => results.invoices.push(...(res.data.results || [])))
-              .catch(() => {})
-          );
-        }
-
-        // Wait for all parallel probes
-        await Promise.all(tasks);
-
-        // Cleanup empty results
-        const output = {
-          accounts: (results.accounts || []).filter(Boolean),
-          subscriptions: (results.subscriptions || []).filter(Boolean),
-          invoices: (results.invoices || []).filter(Boolean)
-        };
-
-        return {
-          content: [{ type: "text", text: JSON.stringify(output, null, 2) }]
-        };
+        return { content: [{ type: "text", text: JSON.stringify(output, null, 2) }] };
       } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Search failed: ${error.message}` }]
-        };
+        return { isError: true, content: [{ type: "text", text: `Search failed: ${error.message}` }] };
       }
-    }
+    },
   );
 }

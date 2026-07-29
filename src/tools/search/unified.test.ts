@@ -1,7 +1,30 @@
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { normalizeCompanyName, readResource, toSafeParams } from '../read-diagnostics.js';
+
+vi.mock('../../billforward.js', () => ({
+  getClient: vi.fn(),
+  environmentParam: {},
+}));
+
+import { getClient } from '../../billforward.js';
+import { registerSearchTools } from './unified.js';
+
+type SearchHandler = (input: Record<string, unknown>) => Promise<{ content: Array<{ text: string }> }>;
+
+function textOutput(result: Promise<{ content: Array<{ text: string }> }>) {
+  return result.then(({ content }) => JSON.parse(content[0].text));
+}
+
+function searchHandler() {
+  let handler: SearchHandler | undefined;
+  registerSearchTools({
+    registerTool: (_name: string, _definition: unknown, callback: SearchHandler) => { handler = callback; },
+  } as any);
+  if (!handler) throw new Error('search handler was not registered');
+  return handler;
+}
 
 describe('read diagnostics', () => {
   it('normalizes accents and punctuation for exact company names', () => {
@@ -98,5 +121,60 @@ describe('read diagnostics', () => {
       resource: 'accounts', endpoint: '/accounts', status: 200, records: 2,
       ids: ['ACC-1', 'ACC-2'], params: { records: 2 }, requestId: 'request-1',
     });
+  });
+});
+
+describe('search', () => {
+  const client = axios.create();
+  // @ts-ignore - axios-mock-adapter resolution-mode type mismatch
+  const mock = new MockAdapter(client);
+  const handler = searchHandler();
+
+  beforeEach(() => {
+    mock.reset();
+    vi.mocked(getClient).mockReturnValue(client as any);
+  });
+
+  it('uses the dedicated email endpoint for an exact account lookup', async () => {
+    mock.onGet('/accounts/email/billing@example.test').reply(200, { results: [{ id: 'ACC-1' }] });
+
+    await handler({ query: 'billing@example.test', entity: 'accounts', match: 'exact', limit: 5 });
+
+    expect(mock.history.get.map(r => r.url)).toContain('/accounts/email/billing@example.test');
+    expect(mock.history.get.some(r => r.params?.filter)).toBe(false);
+  });
+
+  it('does not return a non-equal company name for match=exact', async () => {
+    mock.onGet('/accounts').reply(200, { results: [{ id: 'ACC-OTHER', profile: { companyName: 'Acme Holdings' } }] });
+
+    const output = await textOutput(handler({ query: 'Acme', entity: 'accounts', match: 'exact', limit: 5 }));
+
+    expect(output.accounts).toEqual([]);
+  });
+
+  it('labels a contains company match as approximate', async () => {
+    mock.onGet('/accounts').reply(200, { results: [{ id: 'ACC-1', profile: { companyName: 'Acme Holdings' } }] });
+
+    const output = await textOutput(handler({ query: 'Acme', entity: 'accounts', match: 'contains', limit: 5 }));
+
+    expect(output.accounts[0]).toMatchObject({ id: 'ACC-1', match: 'companyName-contains-local', approximate: true });
+  });
+
+  it('does not call subscriptions or invoices when entity=accounts', async () => {
+    mock.onGet('/accounts/ACC-1').reply(200, { results: [{ id: 'ACC-1' }] });
+
+    await handler({ query: 'ACC-1', entity: 'accounts', match: 'exact', limit: 5 });
+
+    expect(mock.history.get.map(r => r.url)).not.toContain('/subscriptions/ACC-1');
+    expect(mock.history.get.map(r => r.url)).not.toContain('/invoices');
+  });
+
+  it('reports a bounded company scan as truncated when more accounts exist', async () => {
+    mock.onGet('/accounts').reply(200, { totalRecords: 201, results: [{ id: 'ACC-1', profile: { companyName: 'Acme' } }] });
+
+    const output = await textOutput(handler({ query: 'Acme', entity: 'accounts', match: 'exact', limit: 5 }));
+
+    expect(output.truncated).toBe(true);
+    expect(output.diagnostics[0]).toMatchObject({ resource: 'accounts', endpoint: '/accounts' });
   });
 });

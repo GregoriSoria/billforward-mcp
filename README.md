@@ -60,11 +60,11 @@ The server behaves differently depending on these configurations:
 | `BILLFORWARD_SANDBOX_ACCESS_TOKEN` | _(none)_ | API token for the sandbox environment. |
 | `BILLFORWARD_PRODUCTION_ACCESS_TOKEN` | _(none)_ | API token for the production environment. |
 | `BILLFORWARD_ENVIRONMENTS` | _(none)_ | JSON object of named environments. Each entry requires `token` and `type`; `readonly` defaults to `true`; `baseUrl` is optional. |
-| `BILLFORWARD_ACCESS_TOKEN` | _(none)_ | **Legacy** single token. Still supported; maps to the environment named by `BILLFORWARD_ENVIRONMENT` (sandbox if unset). |
-| `BILLFORWARD_ENVIRONMENT` | `sandbox` | **Legacy** — only routes the legacy `BILLFORWARD_ACCESS_TOKEN`. Ignored once you use the per-environment tokens above. |
-| `BILLFORWARD_READ_ONLY` | `true` | When true, POST/PUT actions return instructional error messages to the LLM preventing data mutation. |
-| `BILLFORWARD_PRODUCTION_URL` | `https://app.billforward.net/v1/` | Base URL used when environment is production. |
-| `BILLFORWARD_SANDBOX_URL` | `https://app-sandbox.billforward.net/v1/` | Base URL used when environment is sandbox. |
+| `BILLFORWARD_ACCESS_TOKEN` | _(none)_ | **Legacy** single token. It creates `production` only when `BILLFORWARD_ENVIRONMENT` is `production`; otherwise it creates `sandbox`. |
+| `BILLFORWARD_ENVIRONMENT` | `sandbox` | **Legacy** — selects which legacy bucket receives `BILLFORWARD_ACCESS_TOKEN`; explicit per-environment tokens take precedence for their bucket. |
+| `BILLFORWARD_READ_ONLY` | `true` | Read-only setting for legacy `sandbox` and `production` entries; it does not affect named catalog entries. |
+| `BILLFORWARD_PRODUCTION_URL` | `https://app.billforward.net/v1/` | Default URL for production entries when a named entry omits `baseUrl`; a named `baseUrl` overrides it. |
+| `BILLFORWARD_SANDBOX_URL` | `https://app-sandbox.billforward.net/v1/` | Default URL for sandbox entries when a named entry omits `baseUrl`; a named `baseUrl` overrides it. |
 | `BILLFORWARD_DEFAULT_RESULTS`| `10` | The default number of results parsed per paginated tool response. |
 | `BILLFORWARD_MAX_RESULTS` | `200` | The hard limit cap on how many records the LLM can ask for per tool call. |
 | `BILLFORWARD_TIMEOUT` | `15000` | Fallback timeout in milliseconds before failing a stuck Axios request. |

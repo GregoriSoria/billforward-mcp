@@ -1,16 +1,23 @@
 import axios, { AxiosInstance } from 'axios';
 import { z } from 'zod';
 
-import { TIMEOUT_MS, resolveEnvironments, type Environment } from './config.js';
+import {
+  ENVIRONMENT_NAME_PATTERN,
+  TIMEOUT_MS,
+  resolveEnvironments,
+  type Environment,
+} from './config.js';
 
 // Shared zod field spread into every API-touching tool's inputSchema.
 export const environmentParam = {
   environment: z
-    .enum(['sandbox', 'production'])
+    .string()
+    .regex(ENVIRONMENT_NAME_PATTERN)
     .optional()
     .describe(
-      "Which Billforward environment to target. Required when both sandbox and production are configured; " +
-        "if only one is configured it is used automatically. Ask the user if you're unsure which to use."
+      "Named Billforward environment to target, such as dev, staging, or production. " +
+        "Required when multiple environments are configured; if only one is configured it is used automatically. " +
+        "Use help to see configured names and ask the user if unsure.",
     ),
 };
 
@@ -57,32 +64,43 @@ function createClient(token: string, baseUrl: string): AxiosInstance {
 
 // Resolve the axios client for a tool call. Throws an LLM-readable Error on
 // ambiguity/misconfiguration; tool try/catch turns that into an isError response.
-export function getClient(environment?: Environment): AxiosInstance {
-  const envs = resolveEnvironments();
-  const available = [...envs.keys()];
+export function getClient(
+  environment?: Environment,
+  options: { write?: boolean } = {},
+): AxiosInstance {
+  const environments = resolveEnvironments();
+  const available = [...environments.keys()];
+  let selected: Environment;
 
   if (environment) {
-    const cfg = envs.get(environment);
-    if (!cfg) {
+    selected = environment;
+    if (!environments.has(selected)) {
       const hint = available.length
         ? ` Available: ${available.join(', ')}.${available.length === 1 ? ` Omit the \`environment\` parameter to use ${available[0]} automatically.` : ''}`
         : ' No Billforward token is configured.';
-      throw new Error(`The '${environment}' environment is not configured on this server.${hint}`);
+      throw new Error(`The '${selected}' environment is not configured on this server.${hint}`);
     }
-    return createClient(cfg.token, cfg.baseUrl);
+  } else {
+    if (available.length === 0) {
+      throw new Error(
+        'No Billforward token is configured. Ask the user to set BILLFORWARD_ENVIRONMENTS, ' +
+          'BILLFORWARD_SANDBOX_ACCESS_TOKEN, BILLFORWARD_PRODUCTION_ACCESS_TOKEN, or BILLFORWARD_ACCESS_TOKEN.',
+      );
+    }
+    if (available.length > 1) {
+      throw new Error(
+        `Multiple environments are configured (${available.join(', ')}). ` +
+          'Re-call this tool with the `environment` parameter set to one of them.',
+      );
+    }
+    selected = available[0];
   }
 
-  if (available.length === 0) {
+  const config = environments.get(selected)!;
+  if (options.write && config.readonly) {
     throw new Error(
-      'No Billforward token is configured. Ask the user to set BILLFORWARD_SANDBOX_ACCESS_TOKEN and/or BILLFORWARD_PRODUCTION_ACCESS_TOKEN.'
+      `The '${selected}' environment is read-only. Write operations are disabled for this environment.`,
     );
   }
-  if (available.length > 1) {
-    throw new Error(
-      `Two environments are configured (${available.join(', ')}). Re-call this tool with the \`environment\` parameter set to one of them.`
-    );
-  }
-
-  const only = envs.get(available[0])!;
-  return createClient(only.token, only.baseUrl);
+  return createClient(config.token, config.baseUrl);
 }

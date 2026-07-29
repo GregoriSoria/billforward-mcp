@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getClient } from './billforward.js';
+import { environmentParam, getClient } from './billforward.js';
 import { registerAccountTools } from './tools/customers/accounts.js';
 
 // Capture a registered tool's handler without a live McpServer.
@@ -19,6 +19,8 @@ const TOKEN_VARS = [
   'BILLFORWARD_PRODUCTION_ACCESS_TOKEN',
   'BILLFORWARD_ACCESS_TOKEN',
   'BILLFORWARD_ENVIRONMENT',
+  'BILLFORWARD_ENVIRONMENTS',
+  'BILLFORWARD_READ_ONLY',
 ];
 
 describe('getClient environment resolution', () => {
@@ -36,7 +38,7 @@ describe('getClient environment resolution', () => {
   it('throws asking to choose when both are configured and none requested', () => {
     process.env.BILLFORWARD_SANDBOX_ACCESS_TOKEN = 'sbx';
     process.env.BILLFORWARD_PRODUCTION_ACCESS_TOKEN = 'prd';
-    expect(() => getClient()).toThrow(/Two environments are configured/);
+    expect(() => getClient()).toThrow(/Multiple environments are configured/);
   });
 
   it('honors an explicit environment when both are configured', () => {
@@ -66,6 +68,51 @@ describe('getClient environment resolution', () => {
   it('throws with a config hint when no token is set', () => {
     expect(() => getClient()).toThrow(/No Billforward token is configured/);
   });
+
+  it("selects arbitrary names and requires a name when several exist", () => {
+    process.env.BILLFORWARD_ENVIRONMENTS = JSON.stringify({
+      dev: { token: "dev-token", type: "sandbox" },
+      staging: { token: "staging-token", type: "sandbox" },
+      prod: { token: "prod-token", type: "production" },
+    });
+
+    expect(getClient("staging").defaults.params.access_token).toBe("staging-token");
+    expect(() => getClient()).toThrow(/Multiple environments are configured.*dev, staging, prod/);
+  });
+
+  it("accepts a configured slug in the MCP environment schema", () => {
+    expect(environmentParam.environment.safeParse("qa-2").success).toBe(true);
+    expect(environmentParam.environment.safeParse("QA Env").success).toBe(false);
+  });
+
+  it("blocks writes in a named environment by default", () => {
+    process.env.BILLFORWARD_ENVIRONMENTS = JSON.stringify({
+      dev: { token: "never-show-this", type: "sandbox" },
+    });
+
+    expect(() => getClient("dev", { write: true })).toThrow(
+      /The 'dev' environment is read-only/,
+    );
+  });
+
+  it("allows writes only when readonly is literal false", () => {
+    process.env.BILLFORWARD_ENVIRONMENTS = JSON.stringify({
+      dev: { token: "dev-token", type: "sandbox", readonly: false },
+      prod: { token: "prod-token", type: "production", readonly: true },
+    });
+
+    expect(getClient("dev", { write: true }).defaults.params.access_token).toBe("dev-token");
+    expect(() => getClient("prod", { write: true })).toThrow(
+      /The 'prod' environment is read-only/,
+    );
+  });
+
+  it("preserves BILLFORWARD_READ_ONLY for legacy environments", () => {
+    process.env.BILLFORWARD_SANDBOX_ACCESS_TOKEN = "legacy";
+    process.env.BILLFORWARD_READ_ONLY = "false";
+
+    expect(getClient("sandbox", { write: true }).defaults.params.access_token).toBe("legacy");
+  });
 });
 
 describe('tool wiring surfaces resolver errors', () => {
@@ -79,6 +126,6 @@ describe('tool wiring surfaces resolver errors', () => {
     const handler = captureHandler(registerAccountTools, 'list-accounts');
     const res = await handler({ limit: 10, offset: 0, orderBy: 'created', orderDirection: 'DESC' });
     expect(res.isError).toBe(true);
-    expect(res.content[0].text).toMatch(/Two environments are configured/);
+    expect(res.content[0].text).toMatch(/Multiple environments are configured/);
   });
 });

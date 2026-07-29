@@ -34,6 +34,18 @@ describe('read diagnostics', () => {
     })).toEqual({ records: 5 });
   });
 
+  it('omits token-bearing values under harmless parameter keys', () => {
+    expect(toSafeParams({
+      cursor: 'Bearer secret-value',
+      page: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.signature',
+      named: 'token=secret-value',
+      access: 'access token: secret-value',
+      refresh: 'refresh-token=secret-value',
+      api: 'api_token=secret-value',
+      records: 5,
+    })).toEqual({ records: 5 });
+  });
+
   it('omits unsafe request IDs while preserving opaque IDs', async () => {
     const client = axios.create();
     // @ts-ignore - axios-mock-adapter resolution-mode type mismatch

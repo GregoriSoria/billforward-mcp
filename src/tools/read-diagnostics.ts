@@ -17,7 +17,7 @@ export type ReadDiagnostic = {
 const sensitiveParam = /token|authorization|cookie|email/i;
 const email = /[^\s@/]+@[^\s@/]+\.[^\s@/]+/;
 const emailGlobal = /[^\s@/]+@[^\s@/]+\.[^\s@/]+/g;
-const tokenLike = /bearer\s+\S+|(?:access[_-]?token|refresh[_-]?token|api[_-]?token|token)\s*[:=]\s*\S+|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/i;
+const tokenLike = /bearer\s+\S+|(?:(?:access|refresh|api)[_\s-]*)?token\s*[:=]\s*\S+|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/i;
 
 export function normalizeCompanyName(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -27,7 +27,7 @@ export function normalizeCompanyName(value: string) {
 export function toSafeParams(params: Params = {}): Record<string, SafeValue> {
   return Object.fromEntries(Object.entries(params).filter(([key, value]) =>
     !sensitiveParam.test(key) &&
-    (typeof value === 'number' || typeof value === 'boolean' || (typeof value === 'string' && !email.test(value)))
+    (typeof value === 'number' || typeof value === 'boolean' || (typeof value === 'string' && !email.test(value) && !tokenLike.test(value)))
   )) as Record<string, SafeValue>;
 }
 

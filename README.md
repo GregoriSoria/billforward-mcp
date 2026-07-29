@@ -31,7 +31,49 @@ You need an API token to allow the MCP server to communicate with Billforward.
 
 ## ⚙️ Configuration
 
-To run this server with **npx** (local or published):
+Create a local `.env` file from the tracked template, then replace its placeholder tokens. `.env` is gitignored; keep every environment `readonly: true` initially.
+
+```bash
+cp .env.example .env
+```
+
+Your `.env` should look like this (replace only the placeholder tokens):
+
+```dotenv
+# Keep every environment read-only until writes are explicitly needed.
+BILLFORWARD_ENVIRONMENTS='{"dev":{"token":"your_dev_token","type":"sandbox","readonly":true},"staging":{"token":"your_staging_token","type":"sandbox","readonly":true},"prod":{"token":"your_production_token","type":"production","readonly":true}}'
+BILLFORWARD_TIMEOUT=15000
+```
+
+For a generic `.mcp.json` configuration that loads `.env` from the workspace root:
+
+```json
+{
+  "mcpServers": {
+    "billforward": {
+      "command": "bash",
+      "args": ["-lc", "set -a; source .env; set +a; exec npx -y billforward-mcp"]
+    }
+  }
+}
+```
+
+For VS Code or Cursor, use this `servers` configuration (for example, in `.vscode/mcp.json`):
+
+```json
+{
+  "servers": {
+    "billforward": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "billforward-mcp"],
+      "envFile": "${workspaceFolder}/.env"
+    }
+  }
+}
+```
+
+For clients or workflows that do not load environment files, use this inline `env` alternative:
 
 ```json
 {

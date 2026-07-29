@@ -59,7 +59,7 @@ async function scanCompanyNames(
       : undefined;
     if (typeof totalRecords === 'number' && totalRecords > scanned) truncated = true;
 
-    for (const account of page) {
+    for (const [index, account] of page.entries()) {
       const companyName = account?.profile?.companyName;
       if (typeof companyName !== 'string') continue;
       const normalizedCompanyName = normalizeCompanyName(companyName);
@@ -73,7 +73,10 @@ async function scanCompanyNames(
           ...(match === 'contains' ? { approximate: true } : {}),
         });
       }
-      if (accounts.length === limit) break;
+      if (accounts.length === limit) {
+        if (index < page.length - 1) truncated = true;
+        break;
+      }
     }
 
     if (page.length < records) break;
@@ -90,10 +93,10 @@ export function registerSearchTools(server: McpServer) {
       description: "Find exact Billforward account email/ID, subscription ID, or invoice ID. Free text is a bounded local account company-name scan; use match=contains only when an approximate company-name match is intended.",
       inputSchema: {
         ...environmentParam,
-        query: z.string().describe("Exact email or ID, or a company name to scan locally"),
+        query: z.string().refine((value) => normalizeCompanyName(value).length > 0, "Query must contain letters or numbers").describe("Exact email or ID, or a company name to scan locally"),
         entity: z.enum(['accounts', 'subscriptions', 'invoices', 'all']).default('all'),
         match: z.enum(['exact', 'contains']).default('exact'),
-        limit: z.number().optional().default(5).describe("Max returned records (default 5)"),
+        limit: z.number().int().positive().optional().default(5).describe("Max returned records (default 5)"),
       },
     },
     async ({ environment, query, entity, match, limit }) => {

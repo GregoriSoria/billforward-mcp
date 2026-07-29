@@ -17,13 +17,17 @@ function textOutput(result: Promise<{ content: Array<{ text: string }> }>) {
   return result.then(({ content }) => JSON.parse(content[0].text));
 }
 
-function searchHandler() {
+function searchTool() {
   let handler: SearchHandler | undefined;
+  let definition: { inputSchema: Record<string, { safeParse(input: unknown): { success: boolean } }> } | undefined;
   registerSearchTools({
-    registerTool: (_name: string, _definition: unknown, callback: SearchHandler) => { handler = callback; },
+    registerTool: (_name: string, toolDefinition: typeof definition, callback: SearchHandler) => {
+      definition = toolDefinition;
+      handler = callback;
+    },
   } as any);
-  if (!handler) throw new Error('search handler was not registered');
-  return handler;
+  if (!handler || !definition) throw new Error('search tool was not registered');
+  return { handler, definition };
 }
 
 describe('read diagnostics', () => {
@@ -128,7 +132,7 @@ describe('search', () => {
   const client = axios.create();
   // @ts-ignore - axios-mock-adapter resolution-mode type mismatch
   const mock = new MockAdapter(client);
-  const handler = searchHandler();
+  const { handler, definition } = searchTool();
 
   beforeEach(() => {
     mock.reset();
@@ -142,6 +146,14 @@ describe('search', () => {
 
     expect(mock.history.get.map(r => r.url)).toContain('/accounts/email/billing@example.test');
     expect(mock.history.get.some(r => r.params?.filter)).toBe(false);
+  });
+
+  it.each(['   ', '---'])('rejects a query that normalizes to empty: %j', (query) => {
+    expect(definition.inputSchema.query.safeParse(query).success).toBe(false);
+  });
+
+  it.each([0, -1, 1.5])('rejects a non-positive-integer limit: %s', (limit) => {
+    expect(definition.inputSchema.limit.safeParse(limit).success).toBe(false);
   });
 
   it('does not return a non-equal company name for match=exact', async () => {
@@ -176,5 +188,17 @@ describe('search', () => {
 
     expect(output.truncated).toBe(true);
     expect(output.diagnostics[0]).toMatchObject({ resource: 'accounts', endpoint: '/accounts' });
+  });
+
+  it('reports truncation when the result limit stops within a page', async () => {
+    mock.onGet('/accounts').reply(200, { results: [
+      { id: 'ACC-1', profile: { companyName: 'Acme' } },
+      { id: 'ACC-2', profile: { companyName: 'Acme' } },
+    ] });
+
+    const output = await textOutput(handler({ query: 'Acme', entity: 'accounts', match: 'exact', limit: 1 }));
+
+    expect(output.accounts).toHaveLength(1);
+    expect(output.truncated).toBe(true);
   });
 });

@@ -26,10 +26,12 @@ export function registerGeneralTools(server: McpServer, isReadOnly: boolean) {
 
 ## Search & Analysis Strategy
 1. **Discover Metadata**: Run \`get-metadata-schema\` to see available custom fields for filtering.
-2. **Fast Search**: Use \`search query="keyword"\` for general discovery.
+2. **Fast Search**: Use \`search query="email or ID"\` for an exact lookup. A company name triggers a bounded local account-name scan; use \`match="contains"\` only for approximate matches.
 3. **Deep Dive**: Use \`get-customer-summary query="email/ID"\` for a full 360 overview of a client.
 4. **Time Filtering**: \`list-accounts\` supports real \`created_after\`/\`created_before\` filters. \`list-invoices\`/\`list-subscriptions\` only support \`period_start_after\`/\`period_start_before\` (Billforward has no native created-date filter for those resources). \`list-payments\`/\`list-receipts\` accept \`created_after\`/\`created_before\` but filter client-side since Billforward has no native date filter on those endpoints at all.
-5. **Technical Filter**: Use \`list-*\` tools with \`metadata\` for exact matching on custom keys.
+5. **Technical Filter**: Use \`list-accounts metadata={...}\` or \`find-accounts metadata={...}\`; these become exact API parameters such as \`meta.salesforce_account_id=001xx\`. Search does not support metadata key-value syntax.
+6. **Account History**: Use \`get-account-history\` for documented account-scoped subscriptions and invoices. Its payments block is unavailable because no account-scoped payments endpoint is confirmed.
+7. **Activity Caveat**: Business history and webhooks/notifications do not necessarily represent API request logs.
 
 **CURRENT SERVER STATUS: API Write Operations are \`${isReadOnly ? "DISABLED (Read-Only)" : "ENABLED"}\`**
 

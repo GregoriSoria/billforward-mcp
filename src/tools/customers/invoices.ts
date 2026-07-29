@@ -2,6 +2,15 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getClient, environmentParam } from "../../billforward.js";
 import { MAX_RECORDS_LIMIT, DEFAULT_RECORDS_LIMIT } from "../../config.js";
+import { readResource } from "../read-diagnostics.js";
+
+function readOutput(data: unknown, reads: Awaited<ReturnType<typeof readResource>>[]) {
+  return {
+    ...(data && typeof data === "object" ? data : { results: data }),
+    diagnostics: reads.map((read) => read.diagnostic),
+    errors: reads.flatMap((read) => read.error ? [read.error] : []),
+  };
+}
 
 export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
   server.registerTool(
@@ -32,16 +41,15 @@ export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
             )
           : await client.get("/invoices", { params: sharedParams });
 
-        if (includeMetadata && response.data.results?.length) {
-          await Promise.all(response.data.results.map(async (invoice: any) => {
-            invoice.metadata = await client.get(`/invoices/${invoice.id}/metadata`)
-              .then(res => res.data)
-              .catch(() => ({}));
-          }));
+        const metadataReads = includeMetadata && response.data.results?.length
+          ? await Promise.all(response.data.results.map((invoice: any) => readResource(client, "invoice-metadata", `/invoices/${invoice.id}/metadata`)))
+          : [];
+        for (const [index, metadata] of metadataReads.entries()) {
+          response.data.results[index].metadata = metadata.error ? {} : metadata.data;
         }
 
         return {
-          content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
+          content: [{ type: "text", text: JSON.stringify(readOutput(response.data, metadataReads), null, 2) }]
         };
       } catch (error: any) {
         return {
@@ -65,17 +73,18 @@ export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
       try {
         const client = getClient(environment);
         const [invoiceResponse, metadataResponse] = await Promise.all([
-          client.get(`/invoices/${invoiceId}`),
-          client.get(`/invoices/${invoiceId}/metadata`).catch(() => null)
+          readResource(client, "invoice", `/invoices/${invoiceId}`),
+          readResource(client, "invoice-metadata", `/invoices/${invoiceId}/metadata`)
         ]);
 
-        const invoice = invoiceResponse.data?.results?.[0];
+        if (invoiceResponse.error) throw new Error(invoiceResponse.error.message);
+        const invoice = (invoiceResponse.data as any)?.results?.[0];
         if (invoice) {
-          invoice.metadata = metadataResponse?.data || {};
+          invoice.metadata = metadataResponse.error ? {} : metadataResponse.data || {};
         }
 
         return {
-          content: [{ type: "text", text: JSON.stringify(invoiceResponse.data, null, 2) }]
+          content: [{ type: "text", text: JSON.stringify(readOutput(invoiceResponse.data, [invoiceResponse, metadataResponse]), null, 2) }]
         };
       } catch (error: any) {
         return {

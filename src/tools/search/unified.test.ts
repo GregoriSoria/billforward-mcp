@@ -9,6 +9,8 @@ vi.mock('../../billforward.js', () => ({
 }));
 
 import { getClient } from '../../billforward.js';
+import { registerInvoiceTools } from '../customers/invoices.js';
+import { metadataSchemaUsageTip, registerInsightTools } from '../insights/customer360.js';
 import { registerSearchTools } from './unified.js';
 
 type SearchHandler = (input: Record<string, unknown>) => Promise<{ content: Array<{ text: string }> }>;
@@ -28,6 +30,17 @@ function searchTool() {
   } as any);
   if (!handler || !definition) throw new Error('search tool was not registered');
   return { handler, definition };
+}
+
+function namedTool(register: (server: any) => void, name: string) {
+  let handler: SearchHandler | undefined;
+  register({
+    registerTool: (toolName: string, _definition: unknown, callback: SearchHandler) => {
+      if (toolName === name) handler = callback;
+    },
+  });
+  if (!handler) throw new Error(`${name} was not registered`);
+  return handler;
 }
 
 describe('read diagnostics', () => {
@@ -200,5 +213,46 @@ describe('search', () => {
 
     expect(output.accounts).toHaveLength(1);
     expect(output.truncated).toBe(true);
+  });
+});
+
+describe('adjacent read guidance', () => {
+  const client = axios.create();
+  // @ts-ignore - axios-mock-adapter resolution-mode type mismatch
+  const mock = new MockAdapter(client);
+  const invoiceHandler = namedTool((server) => registerInvoiceTools(server, true), 'get-invoice');
+  const customerSummaryHandler = namedTool(registerInsightTools, 'get-customer-summary');
+
+  beforeEach(() => {
+    mock.reset();
+    vi.mocked(getClient).mockReturnValue(client as any);
+  });
+
+  it('does not advertise key-value syntax for search metadata', () => {
+    expect(metadataSchemaUsageTip()).not.toContain("search query using 'key: value'");
+    expect(metadataSchemaUsageTip()).toContain('meta.<key>=<value>');
+  });
+
+  it('returns invoice metadata fetch failures as diagnostics rather than swallowing them', async () => {
+    mock.onGet('/invoices/INV-1').reply(200, { results: [{ id: 'INV-1' }] });
+    mock.onGet('/invoices/INV-1/metadata').reply(500);
+
+    const output = await textOutput(invoiceHandler({ invoiceId: 'INV-1' }));
+
+    expect(output.errors).toContainEqual(expect.objectContaining({ resource: 'invoice-metadata', status: 500 }));
+  });
+
+  it('uses account-scoped endpoints for the customer summary and returns resource failures', async () => {
+    mock.onGet('/accounts/ACC-1').reply(200, { results: [{ id: 'ACC-1', profile: {} }] });
+    mock.onGet('/subscriptions/account/ACC-1').reply(500);
+    mock.onGet('/accounts/ACC-1/invoices').reply(200, { results: [{ id: 'INV-1' }] });
+
+    const output = await textOutput(customerSummaryHandler({ query: 'ACC-1' }));
+
+    expect(mock.history.get.map((request) => request.url)).toContain('/subscriptions/account/ACC-1');
+    expect(mock.history.get.map((request) => request.url)).toContain('/accounts/ACC-1/invoices');
+    expect(mock.history.get.some((request) => request.params?.filter)).toBe(false);
+    expect(output.errors).toContainEqual(expect.objectContaining({ resource: 'subscriptions', status: 500 }));
+    expect(output.recentInvoices).toEqual([expect.objectContaining({ id: 'INV-1' })]);
   });
 });

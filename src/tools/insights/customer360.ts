@@ -1,6 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getClient, environmentParam } from "../../billforward.js";
+import { readResource } from "../read-diagnostics.js";
+
+export function metadataSchemaUsageTip() {
+  return "Use exact metadata filters as meta.<key>=<value> with list-accounts or find-accounts. Search supports exact email/ID lookup or a bounded local company-name scan; it does not support metadata query syntax. Invoice metadata isn't embedded by default — pass includeMetadata=true to list-invoices, or use get-invoice, to fetch it.";
+}
 
 export function registerInsightTools(server: McpServer) {
   server.registerTool(
@@ -16,46 +21,60 @@ export function registerInsightTools(server: McpServer) {
       try {
         const client = getClient(environment);
         let accountId = query;
+        const resolutionReads: Awaited<ReturnType<typeof readResource>>[] = [];
 
         // If it looks like an email, find account first
         if (query.includes("@")) {
-          const accResponse = await client.get(`/accounts/email/${query}`);
-          if (accResponse.data.results && accResponse.data.results.length > 0) {
-             accountId = accResponse.data.results[0].id;
+          const accountByEmail = await readResource(client, "accounts", `/accounts/email/${query}`);
+          resolutionReads.push(accountByEmail);
+          if (accountByEmail.error) {
+             return { content: [{ type: "text", text: JSON.stringify({ diagnostics: resolutionReads.map((read) => read.diagnostic), errors: [accountByEmail.error] }, null, 2) }] };
+          }
+          if ((accountByEmail.data as any).results?.length) {
+             accountId = (accountByEmail.data as any).results[0].id;
           } else {
              return { content: [{ type: "text", text: `Customer with email ${query} not found.` }] };
           }
         }
 
-        // Fetch multiple entities in parallel for efficiency
+        // Fetch the documented account-scoped resources in parallel.
         const [account, subs, invoices] = await Promise.all([
-           client.get(`/accounts/${accountId}`),
-           client.get("/subscriptions", { params: { filter: accountId, records: 50 } }),
-           client.get("/invoices", { params: { filter: accountId, records: 5, order_by: "created", order: "DESC" } })
+           readResource(client, "account", `/accounts/${accountId}`),
+           readResource(client, "subscriptions", `/subscriptions/account/${accountId}`, { records: 50, order_by: "created", order: "DESC" }),
+           readResource(client, "invoices", `/accounts/${accountId}/invoices`, { records: 5, order_by: "created", order: "DESC" })
         ]);
+        if (account.error) {
+          return { content: [{ type: "text", text: JSON.stringify({
+            diagnostics: [...resolutionReads, account, subs, invoices].map((read) => read.diagnostic),
+            errors: [...resolutionReads, account, subs, invoices].flatMap((read) => read.error ? [read.error] : []),
+          }, null, 2) }] };
+        }
+        const accountRecord = (account.data as any).results?.[0];
 
         const summary = {
           account: {
-            id: account.data.results[0].id,
-            name: `${account.data.results[0].profile.firstName} ${account.data.results[0].profile.lastName}`,
-            company: account.data.results[0].profile.companyName,
-            created: account.data.results[0].created,
-            metadata: account.data.results[0].metadata
+            id: accountRecord.id,
+            name: `${accountRecord.profile.firstName} ${accountRecord.profile.lastName}`,
+            company: accountRecord.profile.companyName,
+            created: accountRecord.created,
+            metadata: accountRecord.metadata
           },
-          subscriptions: subs.data.results.map((s: any) => ({
+          subscriptions: subs.error ? [] : (subs.data as any).results.map((s: any) => ({
             id: s.id,
             name: s.name,
             state: s.state,
             currentPeriodEnd: s.currentPeriodEnd,
             dunning: s.dunning
           })),
-          recentInvoices: invoices.data.results.map((i: any) => ({
+          recentInvoices: invoices.error ? [] : (invoices.data as any).results.map((i: any) => ({
             id: i.id,
             cost: i.totalCost,
             currency: i.currency,
             state: i.state,
             created: i.created
-          }))
+          })),
+          diagnostics: [...resolutionReads, account, subs, invoices].map((read) => read.diagnostic),
+          errors: [...resolutionReads, account, subs, invoices].flatMap((read) => read.error ? [read.error] : [])
         };
 
         return {
@@ -100,17 +119,20 @@ export function registerInsightTools(server: McpServer) {
 
         // Invoices don't embed metadata in the list payload, so each one needs its own
         // /invoices/{id}/metadata call. Sample size is smaller (20 vs 50) to limit the extra round-trips.
-        await Promise.all(invoices.data.results.map((inv: any) =>
-          client.get(`/invoices/${inv.id}/metadata`)
-            .then(res => Object.keys(res.data || {}).forEach(k => invoiceKeys.add(k)))
-            .catch(() => {})
+        const invoiceMetadata = await Promise.all(invoices.data.results.map((inv: any) =>
+          readResource(client, "invoice-metadata", `/invoices/${inv.id}/metadata`)
         ));
+        invoiceMetadata.forEach((metadata) => {
+          if (!metadata.error) Object.keys(metadata.data || {}).forEach(k => invoiceKeys.add(k));
+        });
 
         const schema = {
           accountMetadataKeys: Array.from(accountKeys),
           subscriptionMetadataKeys: Array.from(subKeys),
           invoiceMetadataKeys: Array.from(invoiceKeys),
-          usageTip: "You can filter list-accounts using metadata={'key': 'value'} and search query using 'key: value'. Invoice metadata isn't embedded by default — pass includeMetadata=true to list-invoices, or use get-invoice, to fetch it."
+          usageTip: metadataSchemaUsageTip(),
+          diagnostics: invoiceMetadata.map((metadata) => metadata.diagnostic),
+          errors: invoiceMetadata.flatMap((metadata) => metadata.error ? [metadata.error] : [])
         };
 
         return {

@@ -16,7 +16,6 @@ export type ReadDiagnostic = {
 
 const sensitiveParam = /token|authorization|cookie|email/i;
 const email = /[^\s@/]+@[^\s@/]+\.[^\s@/]+/;
-const emailGlobal = /[^\s@/]+@[^\s@/]+\.[^\s@/]+/g;
 const tokenLike = /bearer\s+\S+|(?:(?:access|refresh|api)[_\s-]*)?token\s*[:=]\s*\S+|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/i;
 
 export function normalizeCompanyName(value: string) {
@@ -32,7 +31,11 @@ export function toSafeParams(params: Params = {}): Record<string, SafeValue> {
 }
 
 function safeEndpoint(endpoint: string) {
-  return endpoint.split('?')[0].replace(emailGlobal, '[redacted]');
+  return endpoint.split('?')[0].split('/').map((segment) => {
+    let value = segment;
+    try { value = decodeURIComponent(segment); } catch { /* retain malformed encoding for the safety check */ }
+    return email.test(value) || tokenLike.test(value) ? '[redacted]' : segment;
+  }).join('/');
 }
 
 function recordsFrom(data: unknown) {
@@ -66,7 +69,7 @@ function diagnosticFrom(
     records: records.length,
     ids: records.flatMap((record) => {
       const value = record && typeof record === 'object' ? (record as { id?: unknown }).id : undefined;
-      return typeof value === 'string' && !email.test(value) ? [value] : [];
+      return typeof value === 'string' && !email.test(value) && !tokenLike.test(value) ? [value] : [];
     }),
     ...(id ? { requestId: id } : {}),
   };

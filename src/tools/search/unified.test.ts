@@ -59,6 +59,33 @@ describe('read diagnostics', () => {
     await expect(readResource(client, 'accounts', '/safe')).resolves.toHaveProperty('diagnostic.requestId', '01J123ABC456DEF789GHIJK');
   });
 
+  it('omits email and token-like record IDs from diagnostics', async () => {
+    const client = axios.create();
+    // @ts-ignore - axios-mock-adapter resolution-mode type mismatch
+    const mock = new MockAdapter(client);
+    mock.onGet('/accounts').reply(200, { results: [
+      { id: 'ACC-1' },
+      { id: 'customer@example.com' },
+      { id: 'Bearer secret-token' },
+      { id: 'token=secret-token' },
+      { id: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.signature' },
+    ] });
+
+    await expect(readResource(client, 'accounts', '/accounts')).resolves.toHaveProperty('diagnostic.ids', ['ACC-1']);
+  });
+
+  it('redacts token-like endpoint path segments while preserving documented paths', async () => {
+    const client = axios.create();
+    // @ts-ignore - axios-mock-adapter resolution-mode type mismatch
+    const mock = new MockAdapter(client);
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.signature';
+    mock.onGet(`/accounts/${jwt}/metadata`).reply(200, []);
+    mock.onGet('/accounts/ACC-1/metadata').reply(200, []);
+
+    await expect(readResource(client, 'accounts', `/accounts/${jwt}/metadata`)).resolves.toHaveProperty('diagnostic.endpoint', '/accounts/[redacted]/metadata');
+    await expect(readResource(client, 'accounts', '/accounts/ACC-1/metadata')).resolves.toHaveProperty('diagnostic.endpoint', '/accounts/ACC-1/metadata');
+  });
+
   it('returns safe diagnostics for successful resource reads', async () => {
     const client = axios.create();
     // @ts-ignore - axios-mock-adapter resolution-mode type mismatch

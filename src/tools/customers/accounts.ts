@@ -20,6 +20,19 @@ function filterHistoryDates(data: unknown, from?: string, to?: string) {
   };
 }
 
+function historyPagination(data: unknown, offset: number, records: number) {
+  const response = data && typeof data === "object" ? data as { results?: unknown; totalRecords?: unknown } : {};
+  const returned = Array.isArray(response.results) ? response.results.length : 0;
+  return {
+    offset,
+    records,
+    returned,
+    ...(typeof response.totalRecords === "number" ? { totalRecords: response.totalRecords } : {}),
+  };
+}
+
+const isoDateTime = z.iso.datetime({ offset: true });
+
 export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
   server.registerTool(
     "find-accounts",
@@ -62,15 +75,18 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
       inputSchema: {
         ...environmentParam,
         accountId: z.string().min(1).describe("Exact account ID"),
-        from: z.string().optional().describe("Optional ISO date; applied locally to returned date fields"),
-        to: z.string().optional().describe("Optional ISO date; applied locally to returned date fields"),
+        from: isoDateTime.optional().describe("Optional ISO datetime; applied locally to returned date fields"),
+        to: isoDateTime.optional().describe("Optional ISO datetime; applied locally to returned date fields"),
         limit: z.number().int().positive().optional().default(DEFAULT_RECORDS_LIMIT).describe(`Number of records per history resource (Hard Max: ${MAX_RECORDS_LIMIT})`),
+        offset: z.number().int().nonnegative().optional().default(0).describe("Number of records to skip per history resource"),
       },
     },
-    async ({ environment, accountId, from, to, limit }) => {
+    async ({ environment, accountId, from, to, limit, offset }) => {
       try {
         const client = getClient(environment);
-        const params = { records: Math.min(limit, MAX_RECORDS_LIMIT), order_by: "created", order: "DESC" };
+        const records = Math.min(limit, MAX_RECORDS_LIMIT);
+        const safeOffset = offset ?? 0;
+        const params = { records, offset: safeOffset, order_by: "created", order: "DESC" };
         const [account, subscriptions, invoices] = await Promise.all([
           readResource(client, "account", `/accounts/${accountId}`),
           readResource(client, "subscriptions", `/subscriptions/account/${accountId}`, params),
@@ -82,6 +98,10 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
             account: account.error ? null : account.data,
             subscriptions: subscriptions.error ? null : filterHistoryDates(subscriptions.data, from, to),
             invoices: invoices.error ? null : filterHistoryDates(invoices.data, from, to),
+            pagination: {
+              subscriptions: historyPagination(subscriptions.data, safeOffset, records),
+              invoices: historyPagination(invoices.data, safeOffset, records),
+            },
             payments: { available: false, reason: "No account-scoped payments endpoint was confirmed." },
             diagnostics: reads.map((read) => read.diagnostic),
             errors: reads.flatMap((read) => read.error ? [read.error] : []),

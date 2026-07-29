@@ -119,5 +119,3 @@ pnpm run build
 ```bash
 pnpm test
 ```
-
-*Includes a special `protocol.test.ts` to ensure no third-party package ever leaks logs to the MCP stream again.*

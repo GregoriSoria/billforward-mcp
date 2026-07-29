@@ -186,4 +186,20 @@ describe('tool wiring surfaces resolver errors', () => {
       /BILLFORWARD_ENVIRONMENTS must be valid JSON/,
     );
   });
+
+  it("help redacts an invalid environment name", async () => {
+    const invalidName = "https://internal.example/v1?token=sentinel-secret";
+    process.env.BILLFORWARD_ENVIRONMENTS = JSON.stringify({
+      [invalidName]: { token: "valid-token", type: "sandbox" },
+    });
+    const handler = captureHandler(registerGeneralTools, "help");
+
+    const response = await handler({});
+    const text = response.content[0].text;
+
+    expect(response.isError).toBe(true);
+    expect(text).toMatch(/invalid environment name/);
+    expect(text).not.toContain("https://internal.example/v1");
+    expect(text).not.toContain("sentinel-secret");
+  });
 });

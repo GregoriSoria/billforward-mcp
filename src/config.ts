@@ -56,7 +56,7 @@ function namedEnvironments(): Map<Environment, EnvironmentConfig> {
   for (const [name, value] of Object.entries(catalog)) {
     if (!ENVIRONMENT_NAME_PATTERN.test(name)) {
       throw new Error(
-        `BILLFORWARD_ENVIRONMENTS contains invalid environment name '${name}'. ` +
+        "BILLFORWARD_ENVIRONMENTS contains an invalid environment name. " +
           "Use lowercase letters, numbers, underscores, or hyphens.",
       );
     }

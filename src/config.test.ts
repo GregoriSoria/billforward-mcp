@@ -93,6 +93,21 @@ describe("resolveEnvironments", () => {
     }
   });
 
+  it("redacts an invalid environment name", () => {
+    const invalidName = "https://internal.example/v1?token=sentinel-secret";
+    process.env.BILLFORWARD_ENVIRONMENTS = JSON.stringify({
+      [invalidName]: { token: "valid-token", type: "sandbox" },
+    });
+
+    expect(() => resolveEnvironments()).toThrow(/invalid environment name/);
+    try {
+      resolveEnvironments();
+    } catch (error) {
+      expect(String(error)).not.toContain("https://internal.example/v1");
+      expect(String(error)).not.toContain("sentinel-secret");
+    }
+  });
+
   it("rejects a collision with an existing sandbox entry", () => {
     process.env.BILLFORWARD_ENVIRONMENTS = JSON.stringify({
       sandbox: { token: "named-secret", type: "sandbox" },

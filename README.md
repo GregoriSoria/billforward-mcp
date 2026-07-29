@@ -38,21 +38,18 @@ To run this server with **npx** (local or published):
   "mcpServers": {
     "billforward": {
       "command": "npx",
-      "args": [
-        "-y",
-        "billforward-mcp"
-      ],
+      "args": ["-y", "billforward-mcp"],
       "env": {
-        "BILLFORWARD_SANDBOX_ACCESS_TOKEN": "your_sandbox_token",
-        "BILLFORWARD_PRODUCTION_ACCESS_TOKEN": "your_production_token",
-        "BILLFORWARD_READ_ONLY": "true"
+        "BILLFORWARD_ENVIRONMENTS": "{\"dev\":{\"token\":\"your_dev_token\",\"type\":\"sandbox\",\"readonly\":true},\"staging\":{\"token\":\"your_staging_token\",\"type\":\"sandbox\",\"readonly\":true},\"prod\":{\"token\":\"your_production_token\",\"type\":\"production\",\"readonly\":true}}"
       }
     }
   }
 }
 ```
 
-Configure whichever environments you have — one or both. When both are set, the LLM must pass `environment: "sandbox"` or `"production"` on each call; with only one set it is used automatically.
+Environment names are user-defined lowercase slugs. With one configured environment, tools select it automatically. With two or more, pass the exact name through the tool's `environment` parameter.
+
+`BILLFORWARD_ENVIRONMENTS` must contain a valid JSON object encoded as a string in your MCP configuration. For named environments, omitted `readonly` means `true`; only the JSON boolean `false` enables writes. An optional absolute HTTP(S) `baseUrl` overrides the default selected by `type`.
 
 ### Advanced Environment Variables
 
@@ -62,6 +59,7 @@ The server behaves differently depending on these configurations:
 |----------|---------------|-------------|
 | `BILLFORWARD_SANDBOX_ACCESS_TOKEN` | _(none)_ | API token for the sandbox environment. |
 | `BILLFORWARD_PRODUCTION_ACCESS_TOKEN` | _(none)_ | API token for the production environment. |
+| `BILLFORWARD_ENVIRONMENTS` | _(none)_ | JSON object of named environments. Each entry requires `token` and `type`; `readonly` defaults to `true`; `baseUrl` is optional. |
 | `BILLFORWARD_ACCESS_TOKEN` | _(none)_ | **Legacy** single token. Still supported; maps to the environment named by `BILLFORWARD_ENVIRONMENT` (sandbox if unset). |
 | `BILLFORWARD_ENVIRONMENT` | `sandbox` | **Legacy** — only routes the legacy `BILLFORWARD_ACCESS_TOKEN`. Ignored once you use the per-environment tokens above. |
 | `BILLFORWARD_READ_ONLY` | `true` | When true, POST/PUT actions return instructional error messages to the LLM preventing data mutation. |
@@ -70,6 +68,8 @@ The server behaves differently depending on these configurations:
 | `BILLFORWARD_DEFAULT_RESULTS`| `10` | The default number of results parsed per paginated tool response. |
 | `BILLFORWARD_MAX_RESULTS` | `200` | The hard limit cap on how many records the LLM can ask for per tool call. |
 | `BILLFORWARD_TIMEOUT` | `15000` | Fallback timeout in milliseconds before failing a stuck Axios request. |
+
+The legacy token variables continue to create the `sandbox` and `production` environments and still use the global `BILLFORWARD_READ_ONLY` setting. They can coexist with catalog entries that use different names. Duplicate names are rejected, so do not define `sandbox` or `production` in the catalog when the corresponding legacy token is configured.
 
 
 ## 🧰 Available Tools
@@ -105,7 +105,7 @@ Business history and webhooks/notifications describe billing activity; they do n
 
 ## 🛡 Security
 
-Enable **Read-Only Mode** by ensuring the environment variable `BILLFORWARD_READ_ONLY=true` is set (it is `true` by default for safety).
+For named environments, read-only mode is configured per entry and defaults to `true`; use the JSON boolean `false` only for an environment that should allow writes. Legacy environments use `BILLFORWARD_READ_ONLY=true` by default.
 If the LLM attempts to use tools like `create-account` or `update-subscription` while Read-Only is active, the operation will be blocked, and the LLM will receive a descriptive error instructing it to inform you that modifications are disabled.
 
 ## 🧪 Development

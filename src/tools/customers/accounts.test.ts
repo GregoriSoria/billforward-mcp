@@ -24,7 +24,7 @@ function accountTools() {
       definitions.set(name, definition);
       handlers.set(name, callback);
     },
-  } as any, true);
+  } as any);
   const get = (name: string) => {
     const handler = handlers.get(name);
     const definition = definitions.get(name);

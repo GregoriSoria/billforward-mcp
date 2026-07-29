@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getClient, environmentParam } from "../../billforward.js";
 import { MAX_RECORDS_LIMIT, DEFAULT_RECORDS_LIMIT } from "../../config.js";
 
-export function registerPlanTools(server: McpServer, isReadOnly: boolean) {
+export function registerPlanTools(server: McpServer) {
   server.registerTool(
     "list-products",
     {

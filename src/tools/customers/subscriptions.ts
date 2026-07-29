@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getClient, environmentParam } from "../../billforward.js";
 import { MAX_RECORDS_LIMIT, DEFAULT_RECORDS_LIMIT } from "../../config.js";
 
-export function registerSubscriptionTools(server: McpServer, isReadOnly: boolean) {
+export function registerSubscriptionTools(server: McpServer) {
   server.registerTool(
     "list-subscriptions",
     {
@@ -81,14 +81,8 @@ export function registerSubscriptionTools(server: McpServer, isReadOnly: boolean
       }
     },
     async ({ environment, accountId, productRatePlanId, name, state }) => {
-      if (isReadOnly) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "This MCP server is currently running in Read-Only mode. Write operations (create/update/delete) are disabled and cannot be executed on the database. Please inform the user." }]
-        };
-      }
       try {
-        const client = getClient(environment);
+        const client = getClient(environment, { write: true });
         const response = await client.post("/subscriptions", {
           accountId,
           productRatePlanId,
@@ -118,13 +112,8 @@ export function registerSubscriptionTools(server: McpServer, isReadOnly: boolean
       }
     },
     async ({ environment, subscriptionId, cancellationAction }) => {
-      if (isReadOnly) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "This MCP server is currently running in Read-Only mode. Write operations (create/update/delete) are disabled and cannot be executed on the database. Please inform the user." }]
-        };
-      }
       try {
+        getClient(environment, { write: true });
         return {
           content: [{ type: "text", text: "Cancellation logic requires exact handling. Please review BF docs. Retrying with explicit endpoint..." }]
         };

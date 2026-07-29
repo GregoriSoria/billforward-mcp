@@ -2,18 +2,29 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getClient, environmentParam } from "../../billforward.js";
 import { resolveEnvironments } from "../../config.js";
 
-export function registerGeneralTools(server: McpServer, isReadOnly: boolean) {
+export function registerGeneralTools(server: McpServer) {
   server.registerTool(
     "help",
     {
       description: "Get concise developer guidance on available Billforward MCP tools and entities. Use this if you are unsure which tool to use."
     },
     async () => {
-      const configured = [...resolveEnvironments().keys()];
-      const envLine = configured.length
-        ? `Configured environments: ${configured.join(", ")}.${configured.length > 1 ? " Pass \`environment\` on each tool call to choose." : ""}`
-        : "No Billforward environment is configured yet — set BILLFORWARD_SANDBOX_ACCESS_TOKEN and/or BILLFORWARD_PRODUCTION_ACCESS_TOKEN.";
-      const helpText = `
+      try {
+        const configured = [...resolveEnvironments().entries()];
+        const environmentStatus = configured.length
+          ? configured
+              .map(
+                ([name, config]) =>
+                  `${name}: ${config.type}, ${config.readonly ? "read-only" : "write-enabled"}`,
+              )
+              .join("\n")
+          : "No Billforward environment is configured yet.";
+        const choiceHint =
+          configured.length > 1
+            ? "\nPass `environment` on each tool call to choose one."
+            : "";
+
+        const helpText = `
 # Billforward MCP - Developer Guide
 
 ## Core Tools
@@ -33,14 +44,17 @@ export function registerGeneralTools(server: McpServer, isReadOnly: boolean) {
 6. **Account History**: Use \`get-account-history\` for documented account-scoped subscriptions and invoices. Its payments block is unavailable because no account-scoped payments endpoint is confirmed.
 7. **Activity Caveat**: Business history and webhooks/notifications do not necessarily represent API request logs.
 
-**CURRENT SERVER STATUS: API Write Operations are \`${isReadOnly ? "DISABLED (Read-Only)" : "ENABLED"}\`**
-
-${envLine}
+## Configured Environments
+${environmentStatus}${choiceHint}
       `.trim();
 
-      return {
-        content: [{ type: "text", text: helpText }]
-      };
+        return { content: [{ type: "text", text: helpText }] };
+      } catch (error: any) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: `Billforward configuration error: ${error.message}` }],
+        };
+      }
     }
   );
 

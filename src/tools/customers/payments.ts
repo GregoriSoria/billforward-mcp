@@ -59,7 +59,7 @@ async function listFilteredByCreatedRange(
   };
 }
 
-export function registerPaymentTools(server: McpServer, isReadOnly: boolean) {
+export function registerPaymentTools(server: McpServer) {
   server.registerTool(
     "list-payments",
     {

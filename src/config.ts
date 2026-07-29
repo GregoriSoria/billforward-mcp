@@ -12,9 +12,6 @@ export const TIMEOUT_MS = process.env.BILLFORWARD_TIMEOUT
   ? parseInt(process.env.BILLFORWARD_TIMEOUT, 10)
   : 15000;
 
-// O modo read-only por padrão agora é true
-export const IS_READ_ONLY = process.env.BILLFORWARD_READ_ONLY !== 'false';
-
 export const ENVIRONMENT_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 export type Environment = string;
 export type EnvironmentKind = "sandbox" | "production";

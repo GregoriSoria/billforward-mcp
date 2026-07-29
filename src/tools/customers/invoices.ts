@@ -12,7 +12,7 @@ function readOutput(data: unknown, reads: Awaited<ReturnType<typeof readResource
   };
 }
 
-export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
+export function registerInvoiceTools(server: McpServer) {
   server.registerTool(
     "list-invoices",
     {
@@ -95,8 +95,7 @@ export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
     }
   );
 
-  if (!isReadOnly) {
-    server.registerTool(
+  server.registerTool(
       "issue-invoice",
       {
         description: "Issue a draft invoice, transitioning it from 'Draft' to 'Unpaid' making it ready for payment collection.",
@@ -107,7 +106,7 @@ export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
       },
       async ({ environment, invoiceId }) => {
         try {
-          const client = getClient(environment);
+          const client = getClient(environment, { write: true });
           // In Billforward, issuing an invoice is usually done by updating its state
           const response = await client.put("/invoices", {
             id: invoiceId,
@@ -123,6 +122,5 @@ export function registerInvoiceTools(server: McpServer, isReadOnly: boolean) {
           };
         }
       }
-    );
-  }
+  );
 }

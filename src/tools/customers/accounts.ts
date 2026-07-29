@@ -33,7 +33,7 @@ function historyPagination(data: unknown, offset: number, records: number) {
 
 const isoDateTime = z.iso.datetime({ offset: true });
 
-export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
+export function registerAccountTools(server: McpServer) {
   server.registerTool(
     "find-accounts",
     {
@@ -259,14 +259,8 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
       }
     },
     async ({ environment, profile }) => {
-      if (isReadOnly) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "This MCP server is currently running in Read-Only mode. Write operations (create/update/delete) are disabled and cannot be executed on the database. Please inform the user." }]
-        };
-      }
       try {
-        const client = getClient(environment);
+        const client = getClient(environment, { write: true });
         const response = await client.post("/accounts", {
           profile
         });
@@ -297,14 +291,8 @@ export function registerAccountTools(server: McpServer, isReadOnly: boolean) {
       }
     },
     async ({ environment, accountId, profile }) => {
-      if (isReadOnly) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "This MCP server is currently running in Read-Only mode. Write operations (create/update/delete) are disabled and cannot be executed on the database. Please inform the user." }]
-        };
-      }
       try {
-        const client = getClient(environment);
+        const client = getClient(environment, { write: true });
         const response = await client.put("/accounts", {
           id: accountId,
           profile

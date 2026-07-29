@@ -59,13 +59,13 @@ describe('MCP Server - Read Tools with Mocks', () => {
       version: "0.1.0",
     });
 
-    // Register all tools in read-only mode for tests
-    registerAccountTools(server, true);
-    registerSubscriptionTools(server, true);
-    registerInvoiceTools(server, true);
-    registerPaymentTools(server, true);
-    registerChargeTools(server, true);
-    registerPlanTools(server, true);
+    // Register all tools for tests; per-environment policy is enforced in handlers.
+    registerAccountTools(server);
+    registerSubscriptionTools(server);
+    registerInvoiceTools(server);
+    registerPaymentTools(server);
+    registerChargeTools(server);
+    registerPlanTools(server);
   });
 
   afterAll(() => {
@@ -73,7 +73,7 @@ describe('MCP Server - Read Tools with Mocks', () => {
   });
 
   describe('Server Initialization', () => {
-    it('should register read tools but not write tools when isReadOnly is true', () => {
+    it('registers the tool catalog for handler-level policy enforcement', () => {
       expect(server).toBeDefined();
     });
   });

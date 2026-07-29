@@ -2,9 +2,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getClient, environmentParam } from "../../billforward.js";
 
-export function registerChargeTools(server: McpServer, isReadOnly: boolean) {
-  if (!isReadOnly) {
-    server.registerTool(
+export function registerChargeTools(server: McpServer) {
+  server.registerTool(
       "create-charge",
       {
         description: "Create a one-off charge for an account. Useful for setup fees, ad-hoc billing, etc.",
@@ -20,7 +19,7 @@ export function registerChargeTools(server: McpServer, isReadOnly: boolean) {
       },
       async ({ environment, accountId, name, description, amount, currency, invoicingType }) => {
         try {
-          const client = getClient(environment);
+          const client = getClient(environment, { write: true });
           const response = await client.post("/charges", {
             accountId,
             name,
@@ -39,6 +38,5 @@ export function registerChargeTools(server: McpServer, isReadOnly: boolean) {
           };
         }
       }
-    );
-  }
+  );
 }

@@ -220,7 +220,7 @@ describe('adjacent read guidance', () => {
   const client = axios.create();
   // @ts-ignore - axios-mock-adapter resolution-mode type mismatch
   const mock = new MockAdapter(client);
-  const invoiceHandler = namedTool((server) => registerInvoiceTools(server, true), 'get-invoice');
+  const invoiceHandler = namedTool(registerInvoiceTools, 'get-invoice');
   const customerSummaryHandler = namedTool(registerInsightTools, 'get-customer-summary');
 
   beforeEach(() => {

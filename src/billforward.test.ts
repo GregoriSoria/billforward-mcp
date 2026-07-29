@@ -1,17 +1,24 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { environmentParam, getClient } from './billforward.js';
 import { registerAccountTools } from './tools/customers/accounts.js';
+import { registerChargeTools } from './tools/customers/charges.js';
+import { registerInvoiceTools } from './tools/customers/invoices.js';
+import { registerGeneralTools } from './tools/overview/general.js';
 
 // Capture a registered tool's handler without a live McpServer.
-function captureHandler(registerFn: (server: any, ro: boolean) => void, toolName: string) {
-  let handler: any;
+function captureTools(registerFn: (server: any) => void) {
+  const tools = new Map<string, { definition: any; handler: any }>();
   const fakeServer = {
-    registerTool: (name: string, _def: unknown, cb: any) => {
-      if (name === toolName) handler = cb;
+    registerTool: (name: string, definition: any, handler: any) => {
+      tools.set(name, { definition, handler });
     },
   };
-  registerFn(fakeServer, true);
-  return handler;
+  registerFn(fakeServer);
+  return tools;
+}
+
+function captureHandler(registerFn: (server: any) => void, toolName: string) {
+  return captureTools(registerFn).get(toolName)?.handler;
 }
 
 const TOKEN_VARS = [
@@ -127,5 +134,56 @@ describe('tool wiring surfaces resolver errors', () => {
     const res = await handler({ limit: 10, offset: 0, orderBy: 'created', orderDirection: 'DESC' });
     expect(res.isError).toBe(true);
     expect(res.content[0].text).toMatch(/Multiple environments are configured/);
+  });
+
+  it("a registered write handler blocks the selected read-only environment", async () => {
+    process.env.BILLFORWARD_ENVIRONMENTS = JSON.stringify({
+      dev: { token: "dev-token", type: "sandbox", readonly: false },
+      prod: { token: "prod-token", type: "production", readonly: true },
+    });
+    const handler = captureHandler(registerAccountTools, "create-account");
+
+    const response = await handler({
+      environment: "prod",
+      profile: { email: "person@example.com", firstName: "Test", lastName: "User" },
+    });
+
+    expect(response.isError).toBe(true);
+    expect(response.content[0].text).toMatch(/'prod' environment is read-only/);
+  });
+
+  it("registers invoice and charge write tools regardless of startup policy", () => {
+    expect(captureTools(registerInvoiceTools).has("issue-invoice")).toBe(true);
+    expect(captureTools(registerChargeTools).has("create-charge")).toBe(true);
+  });
+
+  it("help lists names, types, and modes without secrets or URLs", async () => {
+    process.env.BILLFORWARD_ENVIRONMENTS = JSON.stringify({
+      dev: { token: "dev-secret", type: "sandbox" },
+      prod: { token: "prod-secret", type: "production", readonly: false },
+    });
+    const handler = captureHandler(registerGeneralTools, "help");
+
+    const response = await handler({});
+    const text = response.content[0].text;
+
+    expect(text).toContain("dev: sandbox, read-only");
+    expect(text).toContain("prod: production, write-enabled");
+    expect(text).toContain("Pass `environment` on each tool call");
+    expect(text).not.toContain("dev-secret");
+    expect(text).not.toContain("prod-secret");
+    expect(text).not.toContain("https://");
+  });
+
+  it("help returns an actionable error for an invalid catalog", async () => {
+    process.env.BILLFORWARD_ENVIRONMENTS = "{";
+    const handler = captureHandler(registerGeneralTools, "help");
+
+    const response = await handler({});
+
+    expect(response.isError).toBe(true);
+    expect(response.content[0].text).toMatch(
+      /BILLFORWARD_ENVIRONMENTS must be valid JSON/,
+    );
   });
 });

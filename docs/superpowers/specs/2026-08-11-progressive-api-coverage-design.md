@@ -204,3 +204,40 @@ Mock axios as existing tests do; no live network in CI.
   until migration finishes), not hundreds of per-endpoint tools.
 - Full API reachability is via catalog search + `call-api`, not via new
   one-off `registerTool`s per endpoint.
+
+## Changelog and migration (for existing users)
+
+This is a **major** MCP surface change. Ops stay the same (`npx billforward-mcp` +
+env tokens); no separate index/bootstrap process.
+
+Publish an organized migration note in both places:
+
+1. **`CHANGELOG.md`** (Keep a Changelog style) — version section with
+   `Added` / `Changed` / `Removed` / `Migration`.
+2. **`README.md`** — short “Upgrading from vN” pointing at the new always-on
+   tools and the removed get-by-* names.
+
+Minimum migration table to include:
+
+| Old tool | Replacement |
+|----------|-------------|
+| `get-account`, `get-subscription`, `get-invoice`, `get-payment`, `get-rate-plan` | `lookup` with the entity ID |
+| `get-account-by-email` | `lookup` with the email (routes to `/search-v3`) |
+| `search` (local company-name scan) | `lookup` with free text → `/search-v3` |
+| dedicated `list-*` (after catalog migration) | `search-tools` → `describe-tool` → `call-api` |
+
+Bump the npm major version when the removed tools disappear from `tools/list`.
+
+## Why sfskills needs a search index (and we do not)
+
+sfskills is not a second network “vector server.” It ships an MCP process that
+searches a **local on-disk index** (`vector_index/lexical.sqlite`, built by
+`scripts/bootstrap.py` / `sfskills-mcp-init`) over ~1000+ full `SKILL.md`
+documents. Without that index, every `search_skill` call would be a slow
+full-corpus scan (or would force dumping skill bodies into context). The MCP
+tools stay few (`search_skill`, `get_skill`, …); the corpus stays data.
+
+Billforward’s catalog is different: short structured endpoint entries (name,
+path, params), checked into the npm package. In-memory keyword matching over
+that JSON/TS const is enough. No bootstrap step, no SQLite, no extra process
+for end users.

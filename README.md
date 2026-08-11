@@ -1,51 +1,49 @@
-# Billforward MCP Server 🚀
+# Billforward MCP Server
 
 [![npm version](https://img.shields.io/npm/v/billforward-mcp)](https://www.npmjs.com/package/billforward-mcp)
 [![npm downloads](https://img.shields.io/npm/dt/billforward-mcp)](https://www.npmjs.com/package/billforward-mcp)
 
-A high-performance Model Context Protocol (MCP) server for integrating **Billforward's** robust billing and subscription management API with LLMs.
+This MCP server connects LLMs to [Billforward](https://www.billforward.net/) through a small always-on tool surface: `lookup` resolves prefixed IDs and free-text search, while `search-tools`, `describe-tool`, and `call-api` discover and execute operations from an in-package API catalog—covering the full API without registering hundreds of per-endpoint tools.
 
 <a href="https://ko-fi.com/gregorisoria" target="_blank"><img height="36" style="border:0px;height:36px;" src="https://storage.ko-fi.com/cdn/kofi2.png?v=3" border="0" alt="Buy Me a Coffee at ko-fi.com" /></a>
 
-## 🛠 Features
+```mermaid
+flowchart LR
+  Model --> AlwaysOn
+  AlwaysOn --> Lookup
+  AlwaysOn --> ToolSearch
+  AlwaysOn --> Help
+  ToolSearch -->|"matches"| Catalog
+  Catalog --> Describe
+  Describe --> Call
+  Lookup -->|"PREFIX-id"| GetById
+  Lookup -->|"email/texto"| SearchV3
+```
 
-- **Entity Discovery**: Quickly list and inspect Accounts and Subscriptions.
-- **Protocol Purity**: Zero log leakage to `stdout`, ensuring 100% reliable JSON-RPC communication.
-- **Security First**: Built-in `BILLFORWARD_READ_ONLY=true` (default) mode to protect your data with instructional LLM error rejections.
-- **Modern SDK**: Uses the latest `@modelcontextprotocol/sdk` signatures (`registerTool`).
-- **Fully Testable**: Includes protocol compliance and unit tests via Vitest.
+## Configuration
 
-## 🔑 How to Get Your API Token
+**Primary config:** `BILLFORWARD_ENVIRONMENTS` — a JSON object of named environments (lowercase slugs you choose). Each entry needs `token` and `type` (`sandbox` or `production`); `readonly` defaults to `true` (only JSON `false` enables writes). Optional `baseUrl` overrides the default for that `type`.
 
-You need an API token to allow the MCP server to communicate with Billforward.
+```bash
+BILLFORWARD_ENVIRONMENTS='{"dev":{"token":"your_dev_token","type":"sandbox","readonly":true},"staging":{"token":"your_staging_token","type":"sandbox","readonly":true},"prod":{"token":"your_production_token","type":"production","readonly":true}}'
+```
 
-1. Log in to your Billforward environment.
-2. Navigate to **Setup > Personal > API Keys**.
-3. Create a new token and copy it.
+With one environment configured, tools select it automatically. With two or more, pass the exact name via each tool's `environment` parameter.
 
-**Quick Links:**
-- 🟢 [Sandbox Environment API Keys](https://app-sandbox.billforward.net/#/setup/personal/api-keys)
-- 🚀 [Production Environment API Keys](https://app.billforward.net/#/setup/personal/api-keys)
-
----
-
-## ⚙️ Configuration
-
-Create a local `.env` file from the tracked template, then replace its placeholder tokens. `.env` is gitignored; keep every environment `readonly: true` initially.
+Create a local `.env` from the template and keep every environment read-only until writes are explicitly needed:
 
 ```bash
 cp .env.example .env
 ```
 
-Your `.env` should look like this (replace only the placeholder tokens):
-
 ```dotenv
-# Keep every environment read-only until writes are explicitly needed.
 BILLFORWARD_ENVIRONMENTS='{"dev":{"token":"your_dev_token","type":"sandbox","readonly":true},"staging":{"token":"your_staging_token","type":"sandbox","readonly":true},"prod":{"token":"your_production_token","type":"production","readonly":true}}'
 BILLFORWARD_TIMEOUT=15000
 ```
 
-For a generic `.mcp.json` configuration that loads `.env` from the workspace root:
+### MCP client setup
+
+**`.mcp.json`** (loads `.env` from workspace root):
 
 ```json
 {
@@ -58,7 +56,7 @@ For a generic `.mcp.json` configuration that loads `.env` from the workspace roo
 }
 ```
 
-For VS Code or Cursor, use this `servers` configuration (for example, in `.vscode/mcp.json`):
+**VS Code / Cursor** (`.vscode/mcp.json`):
 
 ```json
 {
@@ -73,7 +71,7 @@ For VS Code or Cursor, use this `servers` configuration (for example, in `.vscod
 }
 ```
 
-For clients or workflows that do not load environment files, use this inline `env` alternative:
+**Inline `env`** (when the client does not load env files):
 
 ```json
 {
@@ -89,75 +87,61 @@ For clients or workflows that do not load environment files, use this inline `en
 }
 ```
 
-Environment names are user-defined lowercase slugs. With one configured environment, tools select it automatically. With two or more, pass the exact name through the tool's `environment` parameter.
+## How to Get Your API Token
 
-`BILLFORWARD_ENVIRONMENTS` must contain a valid JSON object encoded as a string in your MCP configuration. For named environments, omitted `readonly` means `true`; only the JSON boolean `false` enables writes. An optional absolute HTTP(S) `baseUrl` overrides the default selected by `type`.
+1. Log in to your Billforward environment.
+2. Go to **Setup > Personal > API Keys**.
+3. Create a token and copy it.
 
-### Advanced Environment Variables
+- [Sandbox API Keys](https://app-sandbox.billforward.net/#/setup/personal/api-keys)
+- [Production API Keys](https://app.billforward.net/#/setup/personal/api-keys)
 
-The server behaves differently depending on these configurations:
+## Available Tools
 
-| Variable | Default Value | Description |
-|----------|---------------|-------------|
-| `BILLFORWARD_SANDBOX_ACCESS_TOKEN` | _(none)_ | API token for the sandbox environment. |
-| `BILLFORWARD_PRODUCTION_ACCESS_TOKEN` | _(none)_ | API token for the production environment. |
-| `BILLFORWARD_ENVIRONMENTS` | _(none)_ | JSON object of named environments. Each entry requires `token` and `type`; `readonly` defaults to `true`; `baseUrl` is optional. |
-| `BILLFORWARD_ACCESS_TOKEN` | _(none)_ | **Legacy** single token. It creates `production` only when `BILLFORWARD_ENVIRONMENT` is `production`; otherwise it creates `sandbox`. |
-| `BILLFORWARD_ENVIRONMENT` | `sandbox` | **Legacy** — selects which legacy bucket receives `BILLFORWARD_ACCESS_TOKEN`; explicit per-environment tokens take precedence for their bucket. |
-| `BILLFORWARD_READ_ONLY` | `true` | Read-only setting for legacy `sandbox` and `production` entries; it does not affect named catalog entries. |
-| `BILLFORWARD_PRODUCTION_URL` | `https://app.billforward.net/v1/` | Default URL for production entries when a named entry omits `baseUrl`; a named `baseUrl` overrides it. |
-| `BILLFORWARD_SANDBOX_URL` | `https://app-sandbox.billforward.net/v1/` | Default URL for sandbox entries when a named entry omits `baseUrl`; a named `baseUrl` overrides it. |
-| `BILLFORWARD_DEFAULT_RESULTS`| `10` | The default number of results parsed per paginated tool response. |
-| `BILLFORWARD_MAX_RESULTS` | `200` | The hard limit cap on how many records the LLM can ask for per tool call. |
-| `BILLFORWARD_TIMEOUT` | `15000` | Fallback timeout in milliseconds before failing a stuck Axios request. |
+### Discovery (always on)
 
-The legacy token variables continue to create the `sandbox` and `production` environments and still use the global `BILLFORWARD_READ_ONLY` setting. They can coexist with catalog entries that use different names. Duplicate names are rejected, so do not define `sandbox` or `production` in the catalog when the corresponding legacy token is configured.
+| Tool | Purpose |
+|------|---------|
+| `lookup` | Prefixed ID (`ACC-`, `CDT-`, …) → GET by id; email or free text → `/search-v3` |
+| `search-tools` | Keyword search over the API catalog → operation names |
+| `describe-tool` | Full schema for one catalog entry (method, path, params) |
+| `call-api` | Execute a catalog entry by name (writes need a write-enabled environment) |
+| `help` | Developer guide and configured environment summary |
+| `get-me` | Validate credentials via `/organizations/mine` |
 
+**Typical flow:** `lookup` for IDs and text search → `search-tools` → `describe-tool` → `call-api` for lists and writes.
 
-## 🧰 Available Tools
+### Convenience
 
-### � Search & Insights
-- `search`: Exact account email/ID, subscription ID, or invoice ID lookup. A company-name query is a bounded local account-name scan; `match=contains` is approximate.
-- `get-customer-summary`: 360-degree dashboard of a customer (profile, account-scoped subscriptions, recent account invoices, dunning status).
-- `get-metadata-schema`: Analyzes metadata keys in use across Accounts, Subscriptions, and Invoices; apply exact account metadata filters as `meta.<key>=<value>` through `list-accounts` or `find-accounts`.
+| Tool | Purpose |
+|------|---------|
+| `find-accounts` | Paginated account search with metadata filters |
+| `get-account-history` | Account-scoped subscriptions and invoices |
+| `get-customer-summary` | 360° view: profile, subscriptions, recent invoices, dunning |
+| `get-metadata-schema` | Custom metadata keys in use across accounts, subscriptions, invoices |
 
-### �📖 Guidance
-- `help`: Get an overview of available entities and usage patterns.
-- `get-me`: Validate your connection and view profile metadata.
+## Upgrading to 2.0
 
-### 👥 Accounts
-- `list-accounts`: Fetch a paginated list of accounts (`limit`, `offset`, `metadata`, `created_after`/`created_before`).
-- `get-account`: Retrieve full details for a specific UUID.
-- `get-account-by-email`: Find an account quickly by its exact email address.
-- `get-account-history`: Reads documented account-scoped subscriptions (`/subscriptions/account/{accountId}`) and invoices (`/accounts/{accountId}/invoices`), both ordered by `created DESC` with bounded `records`/`offset`. Its payments block is unavailable because no account-scoped payments endpoint has been confirmed.
+Version 2.0 replaces per-endpoint tools with discovery-first tools. Ops are unchanged (`npx billforward-mcp` + env tokens).
 
-### 📝 Subscriptions
-- `list-subscriptions`: Fetch a paginated list of subscriptions (`limit`, `offset`, `period_start_after`/`period_start_before` — Billforward has no native filter on subscription creation date, so this filters by billing period start instead).
-- `get-subscription`: Retrieve full details for a specific UUID.
+| Old tool | Replacement |
+|----------|-------------|
+| `get-account`, `get-subscription`, `get-invoice`, `get-payment`, `get-rate-plan` | `lookup` with the entity ID |
+| `get-account-by-email` | `lookup` with the email |
+| `search` (local company-name scan) | `lookup` with free text → `/search-v3` |
+| dedicated `list-*` tools | `search-tools` → `describe-tool` → `call-api` |
 
-### 🧾 Invoices & Payments
-- `list-invoices` / `get-invoice`: Fetch invoices and draft details. `list-invoices` supports `period_start_after`/`period_start_before` (same caveat as subscriptions — no native created-date filter exists). Unlike accounts/subscriptions, Billforward doesn't embed invoice `metadata` in the base payload — `get-invoice` always fetches it from the dedicated metadata sub-resource; `list-invoices` fetches it per-invoice only when `includeMetadata=true` is passed (adds one extra API call per invoice, so keep `limit` small).
-- `list-payments` / `get-payment` / `list-receipts`: Fetch payments, a single payment by ID (including the offline payment justification text in its `description` field), and receipts. `created_after`/`created_before` are supported on the list tools but Billforward has no native date filter on these endpoints, so matches are filtered client-side after fetching sorted by `created`.
+Full changelog: [CHANGELOG.md on GitHub](https://github.com/GregoriSoria/billforward-mcp/blob/main/CHANGELOG.md)
 
-Business history and webhooks/notifications describe billing activity; they do not necessarily equal API request logs.
+## Security
 
-### 💳 Pricing & Catalog
-- `list-products`: List the main product lines.
-- `list-product-rate-plans`: List specific rate plans (the entities that accounts subscribe to).
+Named environments default to read-only (`readonly: true`). Only set `"readonly": false` for environments that should allow writes.
 
-## 🛡 Security
+When read-only is active, write catalog entries (`create-account`, `update-subscription`, etc.) are blocked with a descriptive error.
 
-For named environments, read-only mode is configured per entry and defaults to `true`; use the JSON boolean `false` only for an environment that should allow writes. Legacy environments use `BILLFORWARD_READ_ONLY=true` by default.
-If the LLM attempts to use tools like `create-account` or `update-subscription` while Read-Only is active, the operation will be blocked, and the LLM will receive a descriptive error instructing it to inform you that modifications are disabled.
+## Development
 
-## 🧪 Development
-
-### Build
 ```bash
 pnpm run build
-```
-
-### Test
-```bash
 pnpm test
 ```

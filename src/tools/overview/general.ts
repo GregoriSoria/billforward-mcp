@@ -48,7 +48,6 @@ export function registerGeneralTools(server: McpServer) {
 - List/write ops (\`list-accounts\`, \`list-payments\`, \`create-account\`, …): \`search-tools\` → \`describe-tool\` → \`call-api\`.
 - Metadata filters: \`call-api name="list-accounts" args={"meta.<key>":"<value>"}\` or \`find-accounts\` → \`meta.<key>=<value>\`. \`lookup\` does not support metadata syntax.
 - Invoice metadata: \`lookup\` with an invoice ID, or \`call-api\` on \`/invoices/{id}/metadata\` once in catalog.
-- Time filters: catalog \`list-accounts\` supports \`created_after\`/\`created_before\`. \`list-invoices\`/\`list-subscriptions\` use \`period_start_after\`/\`period_start_before\`.
 
 ## Configured Environments
 ${environmentStatus}${choiceHint}

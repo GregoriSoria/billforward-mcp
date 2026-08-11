@@ -10,14 +10,19 @@ describe('resolveGetById', () => {
   });
 
   it('maps PAY, REC, ACC, SUB, INV, PRO, PRP, PMD', () => {
-    expect(resolveGetById('PAY-1').path).toBe('/payments/PAY-1');
-    expect(resolveGetById('REC-1').path).toBe('/receipts/REC-1');
-    expect(resolveGetById('ACC-1').path).toBe('/accounts/ACC-1');
-    expect(resolveGetById('SUB-1').path).toBe('/subscriptions/SUB-1');
-    expect(resolveGetById('INV-1').path).toBe('/invoices/INV-1');
-    expect(resolveGetById('PRO-1').path).toBe('/products/PRO-1');
-    expect(resolveGetById('PRP-1').path).toBe('/product-rate-plans/PRP-1');
-    expect(resolveGetById('PMD-1').path).toBe('/payment-methods/PMD-1');
+    const cases: [string, string][] = [
+      ['PAY-1', '/payments/PAY-1'],
+      ['REC-1', '/receipts/REC-1'],
+      ['ACC-1', '/accounts/ACC-1'],
+      ['SUB-1', '/subscriptions/SUB-1'],
+      ['INV-1', '/invoices/INV-1'],
+      ['PRO-1', '/products/PRO-1'],
+      ['PRP-1', '/product-rate-plans/PRP-1'],
+      ['PMD-1', '/payment-methods/PMD-1'],
+    ];
+    for (const [id, path] of cases) {
+      expect(resolveGetById(id)).toEqual({ path, id });
+    }
   });
 
   it('rejects unknown prefix without resource', () => {

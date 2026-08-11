@@ -18,7 +18,7 @@ export const CATALOG: CatalogEntry[] = [
     summary: 'List merchant accounts with pagination, sorting, and metadata filtering',
     method: 'GET',
     path: '/accounts',
-    queryParams: [...LIST_QUERY, 'created_after', 'created_before'],
+    queryParams: [...LIST_QUERY],
     write: false,
   },
   {
@@ -34,7 +34,7 @@ export const CATALOG: CatalogEntry[] = [
     summary: 'List subscriptions with pagination and sorting',
     method: 'GET',
     path: '/subscriptions',
-    queryParams: [...LIST_QUERY, 'period_start_after', 'period_start_before'],
+    queryParams: [...LIST_QUERY],
     write: false,
   },
   {
@@ -42,7 +42,7 @@ export const CATALOG: CatalogEntry[] = [
     summary: 'List invoices with pagination and sorting',
     method: 'GET',
     path: '/invoices',
-    queryParams: [...LIST_QUERY, 'period_start_after', 'period_start_before'],
+    queryParams: [...LIST_QUERY],
     write: false,
   },
   {
@@ -50,7 +50,7 @@ export const CATALOG: CatalogEntry[] = [
     summary: 'List payments across all accounts',
     method: 'GET',
     path: '/payments',
-    queryParams: [...LIST_QUERY, 'created_after', 'created_before'],
+    queryParams: [...LIST_QUERY],
     write: false,
   },
   {
@@ -58,7 +58,7 @@ export const CATALOG: CatalogEntry[] = [
     summary: 'List receipts across all accounts',
     method: 'GET',
     path: '/receipts',
-    queryParams: [...LIST_QUERY, 'created_after', 'created_before'],
+    queryParams: [...LIST_QUERY],
     write: false,
   },
   {

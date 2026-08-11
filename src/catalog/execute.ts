@@ -13,8 +13,12 @@ export async function executeCatalogEntry(
     path = path.replace(`{${key}}`, encodeURIComponent(String(value)));
   }
   if (path.includes('{')) throw new Error(`Unresolved path params in ${path}`);
+  const paramKeys = [
+    ...(entry.queryParams ?? []),
+    ...Object.keys(args).filter((k) => k.startsWith('meta.')),
+  ];
   const params = Object.fromEntries(
-    (entry.queryParams ?? []).filter((k) => args[k] !== undefined).map((k) => [k, args[k]]),
+    paramKeys.filter((k) => args[k] !== undefined).map((k) => [k, args[k]]),
   );
   const body =
     entry.method === 'GET' || entry.method === 'DELETE'

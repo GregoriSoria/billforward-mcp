@@ -28,6 +28,24 @@ describe('executeCatalogEntry', () => {
     await executeCatalogEntry(client, entry, { accountId: 'ACC-1', records: 5 });
   });
 
+  it('forwards meta.* query args on GET', async () => {
+    mock.onGet('/accounts').reply((config) => {
+      expect(config.params).toMatchObject({ 'meta.salesforce_account_id': '001xx' });
+      return [200, { results: [] }];
+    });
+    await executeCatalogEntry(
+      client,
+      {
+        name: 'list-accounts',
+        summary: 'x',
+        method: 'GET' as const,
+        path: '/accounts',
+        queryParams: ['records', 'offset'],
+      },
+      { 'meta.salesforce_account_id': '001xx' },
+    );
+  });
+
   it('POSTs body keys for write entries', async () => {
     mock.onPost('/charges').reply((config) => {
       expect(JSON.parse(config.data)).toMatchObject({ accountId: 'ACC-1', amount: 10 });

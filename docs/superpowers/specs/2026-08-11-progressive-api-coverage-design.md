@@ -210,12 +210,14 @@ Mock axios as existing tests do; no live network in CI.
 This is a **major** MCP surface change. Ops stay the same (`npx billforward-mcp` +
 env tokens); no separate index/bootstrap process.
 
-Publish an organized migration note in both places:
+Publish an organized migration note in both places (npm only renders README on
+the package page — do not dump the full history into README):
 
-1. **`CHANGELOG.md`** (Keep a Changelog style) — version section with
-   `Added` / `Changed` / `Removed` / `Migration`.
-2. **`README.md`** — short “Upgrading from vN” pointing at the new always-on
-   tools and the removed get-by-* names.
+1. **`CHANGELOG.md`** (Keep a Changelog) — full `Added` / `Changed` /
+   `Removed` / `Migration`. Include the file in `package.json` `files` so it
+   ships in the tarball; link it from README with the absolute GitHub URL.
+2. **`README.md`** — short “Upgrading to 2.0” section with the migration table
+   only, plus the GitHub CHANGELOG link.
 
 Minimum migration table to include:
 

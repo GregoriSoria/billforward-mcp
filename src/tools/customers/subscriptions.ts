@@ -44,31 +44,6 @@ export function registerSubscriptionTools(server: McpServer) {
   );
 
   server.registerTool(
-    "get-subscription",
-    {
-      description: "Get detailed state for a specific subscription by its unique ID. Includes current period start/end and pricing component states.",
-      inputSchema: {
-        ...environmentParam,
-        subscriptionId: z.string().describe("The UUID of the subscription (e.g., 'SUB-XXXX-XXXX')")
-      }
-    },
-    async ({ environment, subscriptionId }) => {
-      try {
-        const client = getClient(environment);
-        const response = await client.get(`/subscriptions/${subscriptionId}`);
-        return {
-          content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error retrieving subscription ${subscriptionId}: ${error.message}` }]
-        };
-      }
-    }
-  );
-
-  server.registerTool(
     "create-subscription",
     {
       description: "Create a new subscription for an account to a specific product rate plan.",

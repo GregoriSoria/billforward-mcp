@@ -13,6 +13,7 @@ import { registerInvoiceTools } from "./tools/customers/invoices.js";
 import { registerPaymentTools } from "./tools/customers/payments.js";
 import { registerChargeTools } from "./tools/customers/charges.js";
 import { registerPlanTools } from "./tools/pricing/plans.js";
+import { registerLookupTools } from "./tools/discovery/lookup.js";
 
 let client: AxiosInstance;
 // @ts-ignore - bypassing strict type mismatch between axios-mock-adapter and project axios versions
@@ -46,13 +47,14 @@ describe('MCP Server - Read Tools with Mocks', () => {
     mock.onGet("/products").reply(200, loadMock('list-products.json'));
     mock.onGet("/product-rate-plans").reply(200, loadMock('list-product-rate-plans.json'));
 
-    // Dynamic routes (regex matching)
-    mock.onGet(/\/accounts\/email\/.+/).reply(200, loadMock('get-account-by-email.json'));
+    // Dynamic routes (regex matching) — kept for lookup and list tool mocks
     mock.onGet(/\/accounts\/[a-zA-Z0-9-]+$/).reply(200, loadMock('get-account.json'));
     mock.onGet(/\/subscriptions\/[a-zA-Z0-9-]+$/).reply(200, loadMock('get-subscription.json'));
     mock.onGet(/\/invoices\/[a-zA-Z0-9-]+$/).reply(200, loadMock('get-invoice.json'));
     mock.onGet(/\/payments\/[a-zA-Z0-9-]+$/).reply(200, loadMock('get-payment.json'));
     mock.onGet(/\/product-rate-plans\/[a-zA-Z0-9-]+$/).reply(200, loadMock('get-rate-plan.json'));
+    mock.onGet(/\/credit-notes\/[a-zA-Z0-9-]+$/).reply(200, { results: [{ id: 'CDT-1' }] });
+    mock.onGet('/search-v3').reply(200, { groupedResults: {} });
 
     server = new McpServer({
       name: "TestServer",
@@ -66,6 +68,7 @@ describe('MCP Server - Read Tools with Mocks', () => {
     registerPaymentTools(server);
     registerChargeTools(server);
     registerPlanTools(server);
+    registerLookupTools(server);
   });
 
   afterAll(() => {
@@ -85,16 +88,15 @@ describe('MCP Server - Read Tools with Mocks', () => {
       expect(response.data).toHaveProperty('results');
     });
 
-    it('Tool: get-account', async () => {
+    it('Tool: lookup by prefixed ID', async () => {
       const response = await client.get("/accounts/ACC-1234");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
 
-    it('Tool: get-account-by-email', async () => {
-      const response = await client.get("/accounts/email/test@example.com");
+    it('Tool: lookup via search-v3', async () => {
+      const response = await client.get("/search-v3", { params: { query: 'test@example.com', records: 5, offset: 0 } });
       expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('results');
     });
 
     it('Tool: list-profiles', async () => {
@@ -109,20 +111,8 @@ describe('MCP Server - Read Tools with Mocks', () => {
       expect(response.data).toHaveProperty('results');
     });
 
-    it('Tool: get-subscription', async () => {
-      const response = await client.get("/subscriptions/SUB-1234");
-      expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('results');
-    });
-
     it('Tool: list-invoices', async () => {
       const response = await client.get("/invoices");
-      expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('results');
-    });
-
-    it('Tool: get-invoice', async () => {
-      const response = await client.get("/invoices/INV-1234");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });
@@ -139,13 +129,6 @@ describe('MCP Server - Read Tools with Mocks', () => {
       expect(response.data).toHaveProperty('results');
     });
 
-    it('Tool: get-payment', async () => {
-      const response = await client.get("/payments/PAY-1234");
-      expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('results');
-      expect(response.data.results[0]).toHaveProperty('description');
-    });
-
     it('Tool: list-products', async () => {
       const response = await client.get("/products");
       expect(response.status).toBe(200);
@@ -154,12 +137,6 @@ describe('MCP Server - Read Tools with Mocks', () => {
 
     it('Tool: list-product-rate-plans', async () => {
       const response = await client.get("/product-rate-plans");
-      expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('results');
-    });
-
-    it('Tool: get-rate-plan', async () => {
-      const response = await client.get("/product-rate-plans/PRP-1234");
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('results');
     });

@@ -66,28 +66,4 @@ export function registerPlanTools(server: McpServer) {
     }
   );
 
-  server.registerTool(
-    "get-rate-plan",
-    {
-      description: "Get detailed information about a specific product rate plan by ID or Data Name. This will return the full structure including pricing components and pricing tiers, essential for understanding how the plan is billed.",
-      inputSchema: {
-        ...environmentParam,
-        ratePlanIdOrName: z.string().describe("The unique UUID or data name of the product rate plan")
-      }
-    },
-    async ({ environment, ratePlanIdOrName }) => {
-      try {
-        const client = getClient(environment);
-        const response = await client.get(`/product-rate-plans/${ratePlanIdOrName}`);
-        return {
-          content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error retrieving rate plan: ${error.message}` }]
-        };
-      }
-    }
-  );
 }

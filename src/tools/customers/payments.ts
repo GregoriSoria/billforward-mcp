@@ -96,31 +96,6 @@ export function registerPaymentTools(server: McpServer) {
   );
 
   server.registerTool(
-    "get-payment",
-    {
-      description: "Get full details for a specific payment by ID. Includes the offline payment justification (the 'description' field) when the payment was recorded manually rather than through a gateway.",
-      inputSchema: {
-        ...environmentParam,
-        paymentId: z.string().describe("The unique UUID of the payment (e.g., 'PAY-XXXX-XXXX')")
-      }
-    },
-    async ({ environment, paymentId }) => {
-      try {
-        const client = getClient(environment);
-        const response = await client.get(`/payments/${paymentId}`);
-        return {
-          content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error retrieving payment ${paymentId}: ${error.message}` }]
-        };
-      }
-    }
-  );
-
-  server.registerTool(
     "list-receipts",
     {
       description: "List receipts across all accounts. Receipts usually map 1-to-1 with successful payments and provide audit data. Note: Billforward has no native created-date filter on this endpoint — when created_after/created_before are set, results are fetched sorted by created (regardless of orderBy) and filtered client-side.",

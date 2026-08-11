@@ -167,56 +167,6 @@ export function registerAccountTools(server: McpServer) {
   );
 
   server.registerTool(
-    "get-account-by-email",
-    {
-      description: "Find an account specifically by their email address. This is the fastest way to find a customer if you have their email.",
-      inputSchema: {
-        ...environmentParam,
-        email: z.string().email().describe("The exact email address of the account profile")
-      }
-    },
-    async ({ environment, email }) => {
-      try {
-        const client = getClient(environment);
-        const response = await client.get(`/accounts/email/${email}`);
-        return {
-          content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error finding account by email ${email}: ${error.message}` }]
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    "get-account",
-    {
-      description: "Get detailed information about a specific account by ID. Contains billing contact info and linked metadata.",
-      inputSchema: {
-        ...environmentParam,
-        accountId: z.string().describe("The unique UUID of the account (e.g., 'ACC-XXXX-XXXX')")
-      }
-    },
-    async ({ environment, accountId }) => {
-      try {
-        const client = getClient(environment);
-        const response = await client.get(`/accounts/${accountId}`);
-        return {
-          content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error retrieving account ${accountId}: ${error.message}` }]
-        };
-      }
-    }
-  );
-
-  server.registerTool(
     "list-profiles",
     {
       description: "List all account profiles. Profiles contain contact details like firstName, lastName, email, and address fields.",

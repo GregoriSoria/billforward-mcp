@@ -61,41 +61,6 @@ export function registerInvoiceTools(server: McpServer) {
   );
 
   server.registerTool(
-    "get-invoice",
-    {
-      description: "Get full details for a specific invoice. Includes line items, taxes, payment status, and metadata (Billforward does not embed invoice metadata in the base invoice payload, so it is fetched from the dedicated /invoices/{id}/metadata endpoint and merged in).",
-      inputSchema: {
-        ...environmentParam,
-        invoiceId: z.string().describe("The unique UUID of the invoice (e.g., 'INV-XXXX-XXXX')")
-      }
-    },
-    async ({ environment, invoiceId }) => {
-      try {
-        const client = getClient(environment);
-        const [invoiceResponse, metadataResponse] = await Promise.all([
-          readResource(client, "invoice", `/invoices/${invoiceId}`),
-          readResource(client, "invoice-metadata", `/invoices/${invoiceId}/metadata`)
-        ]);
-
-        if (invoiceResponse.error) throw new Error(invoiceResponse.error.message);
-        const invoice = (invoiceResponse.data as any)?.results?.[0];
-        if (invoice) {
-          invoice.metadata = metadataResponse.error ? {} : metadataResponse.data || {};
-        }
-
-        return {
-          content: [{ type: "text", text: JSON.stringify(readOutput(invoiceResponse.data, [invoiceResponse, metadataResponse]), null, 2) }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error retrieving invoice ${invoiceId}: ${error.message}` }]
-        };
-      }
-    }
-  );
-
-  server.registerTool(
       "issue-invoice",
       {
         description: "Issue a draft invoice, transitioning it from 'Draft' to 'Unpaid' making it ready for payment collection.",

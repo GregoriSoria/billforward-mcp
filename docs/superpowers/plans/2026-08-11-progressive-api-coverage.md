@@ -585,7 +585,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 (Summarize prior release from git history in one short section, or start history at 2.0.0 and note “earlier versions undocumented here”.)
 ```
 
-- [ ] **Step 2: Update README Available Tools + Upgrading section (keep short)**
+- [ ] **Step 2: Rewrite README (cleanup + diagram)**
+
+Requirements for `README.md` (npm-visible):
+
+1. Open with a direct one-paragraph explanation of what the MCP does (no
+   marketing fluff). Remove the Features section entirely.
+2. Put the architecture mermaid diagram near the top (right after the
+   intro / badges) so readers see how discovery works:
+
+```mermaid
+flowchart LR
+  Model --> AlwaysOn
+  AlwaysOn --> Lookup
+  AlwaysOn --> ToolSearch
+  AlwaysOn --> Help
+  ToolSearch -->|"matches"| Catalog
+  Catalog --> Describe
+  Describe --> Call
+  Lookup -->|"PREFIX-id"| GetById
+  Lookup -->|"email/texto"| SearchV3
+```
+
+3. Highlight `BILLFORWARD_ENVIRONMENTS` as the primary config — show the
+   full JSON example prominently; keep MCP client snippets secondary.
+4. Remove the Advanced Environment Variables section and its table.
+5. Rewrite Available Tools for the new surface (`lookup`, `search-tools`,
+   `describe-tool`, `call-api`, `help`, plus remaining convenience tools).
+6. Add short `## Upgrading to 2.0` with the migration table + GitHub
+   CHANGELOG link (do not paste the full changelog into README).
 
 - [ ] **Step 3: Bump `package.json` to `2.0.0` and ensure `files` packs `CHANGELOG.md`**
 

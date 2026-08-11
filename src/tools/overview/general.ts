@@ -27,22 +27,31 @@ export function registerGeneralTools(server: McpServer) {
         const helpText = `
 # Billforward MCP - Developer Guide
 
-## Core Tools
-- **Insights**: \`get-customer-summary\`, \`get-metadata-schema\`
-- **Accounts**: \`list-accounts\`, \`get-account\`, \`get-account-by-email\`
-- **Subscriptions**: \`list-subscriptions\`, \`get-subscription\`
-- **Invoices**: \`list-invoices\`, \`get-invoice\`
-- **Payments**: \`list-payments\`, \`get-payment\`, \`list-receipts\`
-- **Pricing**: \`list-products\`, \`list-product-rate-plans\`
+## Always-on discovery tools
+- **\`lookup\`**: Prefixed ID (\`ACC-\`, \`CDT-\`, …) → GET by id; email/free text → \`/search-v3\`. Pass \`resource=\` for UUID-only entities.
+- **\`search-tools\`**: Keyword search over the API catalog → matching operation names.
+- **\`describe-tool\`**: Full schema for one catalog entry (method, path, params).
+- **\`call-api\`**: Execute a catalog entry by name. Writes need a write-enabled environment.
+- **\`help\`**, **\`get-me\`**: This guide and credential check.
 
-## Search & Analysis Strategy
-1. **Discover Metadata**: Run \`get-metadata-schema\` to see available custom fields for filtering.
-2. **Fast Search**: Use \`search query="email or ID"\` for an exact lookup. A company name triggers a bounded local account-name scan; use \`match="contains"\` only for approximate matches.
-3. **Deep Dive**: Use \`get-customer-summary query="email/ID"\` for a full 360 overview of a client.
-4. **Time Filtering**: \`list-accounts\` supports real \`created_after\`/\`created_before\` filters. \`list-invoices\`/\`list-subscriptions\` only support \`period_start_after\`/\`period_start_before\` (Billforward has no native created-date filter for those resources). \`list-payments\`/\`list-receipts\` accept \`created_after\`/\`created_before\` but filter client-side since Billforward has no native date filter on those endpoints at all.
-5. **Technical Filter**: Use \`list-accounts metadata={...}\` or \`find-accounts metadata={...}\`; these become exact API parameters such as \`meta.salesforce_account_id=001xx\`. Search does not support metadata key-value syntax.
-6. **Account History**: Use \`get-account-history\` for documented account-scoped subscriptions and invoices. Its payments block is unavailable because no account-scoped payments endpoint is confirmed.
-7. **Activity Caveat**: Business history and webhooks/notifications do not necessarily represent API request logs.
+## Workflow
+1. **Find something**: \`lookup query="email or ACC-…"\` for IDs and text search.
+2. **List or write anything else**: \`search-tools\` → \`describe-tool\` → \`call-api\`.
+3. **Metadata cheat sheet**: \`get-metadata-schema\` for custom field keys.
+4. **Customer 360**: \`get-customer-summary query="email/ID"\`.
+
+## Convenience tools (also in catalog)
+- **Accounts**: \`list-accounts\`, \`find-accounts\`, \`get-account-history\`
+- **Subscriptions**: \`list-subscriptions\`
+- **Invoices**: \`list-invoices\`
+- **Payments**: \`list-payments\`, \`list-receipts\`
+- **Pricing**: \`list-products\`, \`list-product-rate-plans\`
+- **Insights**: \`get-customer-summary\`, \`get-metadata-schema\`
+
+## Tips
+- Metadata filters: \`list-accounts metadata={...}\` or \`find-accounts\` → \`meta.<key>=<value>\`. \`lookup\` does not support metadata syntax.
+- Invoice metadata: pass \`includeMetadata=true\` to \`list-invoices\`, or \`lookup\` with an invoice ID.
+- Time filters: \`list-accounts\` has native \`created_after\`/\`created_before\`. \`list-invoices\`/\`list-subscriptions\` use \`period_start_after\`/\`period_start_before\`. \`list-payments\`/\`list-receipts\` date filters are client-side.
 
 ## Configured Environments
 ${environmentStatus}${choiceHint}

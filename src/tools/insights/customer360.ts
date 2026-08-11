@@ -4,7 +4,7 @@ import { getClient, environmentParam } from "../../billforward.js";
 import { readResource } from "../read-diagnostics.js";
 
 export function metadataSchemaUsageTip() {
-  return "Use exact metadata filters as meta.<key>=<value> with list-accounts or find-accounts. Use lookup for email/ID search; it does not support metadata query syntax. Invoice metadata isn't embedded by default — pass includeMetadata=true to list-invoices, or use lookup with an invoice ID, to fetch it.";
+  return "Use exact metadata filters as meta.<key>=<value> with call-api list-accounts or find-accounts. Use lookup for email/ID search; it does not support metadata query syntax. Invoice metadata isn't embedded in list payloads — use lookup with an invoice ID to fetch the full record.";
 }
 
 export function registerInsightTools(server: McpServer) {

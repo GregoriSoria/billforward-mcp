@@ -40,18 +40,15 @@ export function registerGeneralTools(server: McpServer) {
 3. **Metadata cheat sheet**: \`get-metadata-schema\` for custom field keys.
 4. **Customer 360**: \`get-customer-summary query="email/ID"\`.
 
-## Convenience tools (also in catalog)
-- **Accounts**: \`list-accounts\`, \`find-accounts\`, \`get-account-history\`
-- **Subscriptions**: \`list-subscriptions\`
-- **Invoices**: \`list-invoices\`
-- **Payments**: \`list-payments\`, \`list-receipts\`
-- **Pricing**: \`list-products\`, \`list-product-rate-plans\`
+## Convenience tools (not in catalog)
+- **Accounts**: \`find-accounts\`, \`get-account-history\`
 - **Insights**: \`get-customer-summary\`, \`get-metadata-schema\`
 
 ## Tips
-- Metadata filters: \`list-accounts metadata={...}\` or \`find-accounts\` → \`meta.<key>=<value>\`. \`lookup\` does not support metadata syntax.
-- Invoice metadata: pass \`includeMetadata=true\` to \`list-invoices\`, or \`lookup\` with an invoice ID.
-- Time filters: \`list-accounts\` has native \`created_after\`/\`created_before\`. \`list-invoices\`/\`list-subscriptions\` use \`period_start_after\`/\`period_start_before\`. \`list-payments\`/\`list-receipts\` date filters are client-side.
+- List/write ops (\`list-accounts\`, \`list-payments\`, \`create-account\`, …): \`search-tools\` → \`describe-tool\` → \`call-api\`.
+- Metadata filters: \`call-api name="list-accounts" args={"meta.<key>":"<value>"}\` or \`find-accounts\` → \`meta.<key>=<value>\`. \`lookup\` does not support metadata syntax.
+- Invoice metadata: \`lookup\` with an invoice ID, or \`call-api\` on \`/invoices/{id}/metadata\` once in catalog.
+- Time filters: catalog \`list-accounts\` supports \`created_after\`/\`created_before\`. \`list-invoices\`/\`list-subscriptions\` use \`period_start_after\`/\`period_start_before\`.
 
 ## Configured Environments
 ${environmentStatus}${choiceHint}

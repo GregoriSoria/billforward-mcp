@@ -9,7 +9,6 @@ vi.mock('../../billforward.js', () => ({
 }));
 
 import { getClient } from '../../billforward.js';
-import { registerInvoiceTools } from '../customers/invoices.js';
 import { metadataSchemaUsageTip, registerInsightTools } from '../insights/customer360.js';
 
 type Handler = (input: Record<string, unknown>) => Promise<{ content: Array<{ text: string }> }>;
@@ -131,7 +130,6 @@ describe('adjacent read guidance', () => {
   const client = axios.create();
   // @ts-ignore - axios-mock-adapter resolution-mode type mismatch
   const mock = new MockAdapter(client);
-  const listInvoicesHandler = namedTool(registerInvoiceTools, 'list-invoices');
   const customerSummaryHandler = namedTool(registerInsightTools, 'get-customer-summary');
 
   beforeEach(() => {
@@ -142,15 +140,6 @@ describe('adjacent read guidance', () => {
   it('does not advertise key-value syntax for search metadata', () => {
     expect(metadataSchemaUsageTip()).not.toContain("search query using 'key: value'");
     expect(metadataSchemaUsageTip()).toContain('meta.<key>=<value>');
-  });
-
-  it('returns invoice metadata fetch failures as diagnostics rather than swallowing them', async () => {
-    mock.onGet('/invoices').reply(200, { results: [{ id: 'INV-1' }] });
-    mock.onGet('/invoices/INV-1/metadata').reply(500);
-
-    const output = await textOutput(listInvoicesHandler({ includeMetadata: true, limit: 5 }));
-
-    expect(output.errors).toContainEqual(expect.objectContaining({ resource: 'invoice-metadata', status: 500 }));
   });
 
   it('uses account-scoped endpoints for the customer summary and returns resource failures', async () => {

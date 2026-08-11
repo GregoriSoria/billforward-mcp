@@ -6,6 +6,11 @@ describe('searchCatalog', () => {
     const hits = searchCatalog('credit note', 5);
     expect(hits.some((e) => e.name === 'list-credit-notes')).toBe(true);
   });
+
+  it('finds list-payments by keyword', () => {
+    const hits = searchCatalog('list payments', 5);
+    expect(hits.some((e) => e.name === 'list-payments')).toBe(true);
+  });
 });
 
 describe('getCatalogEntry', () => {

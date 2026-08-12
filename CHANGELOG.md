@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - MCP tool surface is discovery-first (~5 core tools) instead of one tool per endpoint
 - Removed misleading date-filter `queryParams` from catalog list entries (`call-api` only forwards pagination and sort params)
+- Multi-env calls omit `environment` → first sandbox (never production); `environment=sandbox` aliases to that sandbox
+- Sharper tool/`help` guidance (when to use `lookup` vs catalog vs customer summary)
+- `call-api` normalizes `order` to `ASC`/`DESC` and accepts `orderBy` as `order_by`
 
 ### Removed
 

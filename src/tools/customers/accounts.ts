@@ -37,7 +37,9 @@ export function registerAccountTools(server: McpServer) {
   server.registerTool(
     "find-accounts",
     {
-      description: "Find accounts using exactly one explicit lookup: account ID, exact profile email, or account metadata. A company-name lookup is intentionally not supported here.",
+      description:
+        "Find accounts by exactly one of: account ID, exact profile email, or metadata filter. " +
+        "NOT for company/hotel names or free text — use lookup instead.",
       inputSchema: {
         ...environmentParam,
         accountId: z.string().optional().describe("Exact account ID"),
@@ -71,7 +73,9 @@ export function registerAccountTools(server: McpServer) {
   server.registerTool(
     "get-account-history",
     {
-      description: "Read one account with its account-scoped subscriptions and invoices. Payment history is unavailable because no account-scoped payments endpoint has been confirmed.",
+      description:
+        "Read one account plus its subscriptions and invoices. " +
+        "Does NOT include credit notes or payments — use search-tools → call-api (list-credit-notes-by-account / list-payments) for those.",
       inputSchema: {
         ...environmentParam,
         accountId: z.string().min(1).describe("Exact account ID"),

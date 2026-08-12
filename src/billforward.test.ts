@@ -41,10 +41,10 @@ describe('getClient environment resolution', () => {
     expect(client.defaults.baseURL).toContain('sandbox');
   });
 
-  it('throws asking to choose when both are configured and none requested', () => {
+  it('defaults to sandbox when both sandbox and production are configured and none requested', () => {
     process.env.BILLFORWARD_SANDBOX_ACCESS_TOKEN = 'sbx';
     process.env.BILLFORWARD_PRODUCTION_ACCESS_TOKEN = 'prd';
-    expect(() => getClient()).toThrow(/Multiple environments are configured/);
+    expect(getClient().defaults.params.access_token).toBe('sbx');
   });
 
   it('honors an explicit environment when both are configured', () => {
@@ -75,7 +75,7 @@ describe('getClient environment resolution', () => {
     expect(() => getClient()).toThrow(/No Billforward token is configured/);
   });
 
-  it("selects arbitrary names and requires a name when several exist", () => {
+  it("selects arbitrary names and defaults omit to the first sandbox", () => {
     process.env.BILLFORWARD_ENVIRONMENTS = JSON.stringify({
       dev: { token: "dev-token", type: "sandbox" },
       staging: { token: "staging-token", type: "sandbox" },
@@ -83,7 +83,25 @@ describe('getClient environment resolution', () => {
     });
 
     expect(getClient("staging").defaults.params.access_token).toBe("staging-token");
-    expect(() => getClient()).toThrow(/Multiple environments are configured.*dev, staging, prod/);
+    expect(getClient().defaults.params.access_token).toBe("dev-token");
+  });
+
+  it("aliases environment=sandbox to the first sandbox-typed named env", () => {
+    process.env.BILLFORWARD_ENVIRONMENTS = JSON.stringify({
+      dev: { token: "dev-token", type: "sandbox" },
+      prod: { token: "prod-token", type: "production" },
+    });
+
+    expect(getClient("sandbox").defaults.params.access_token).toBe("dev-token");
+  });
+
+  it("throws when omitting environment if only production envs exist", () => {
+    process.env.BILLFORWARD_ENVIRONMENTS = JSON.stringify({
+      prod: { token: "prod-token", type: "production" },
+      prod2: { token: "prod2-token", type: "production" },
+    });
+
+    expect(() => getClient()).toThrow(/none are sandbox/);
   });
 
   it("accepts a configured slug in the MCP environment schema", () => {
@@ -126,13 +144,11 @@ describe('tool wiring surfaces resolver errors', () => {
     for (const v of TOKEN_VARS) delete process.env[v];
   });
 
-  it('call-api returns isError telling the LLM to choose when both envs are set', async () => {
-    process.env.BILLFORWARD_SANDBOX_ACCESS_TOKEN = 'sbx';
-    process.env.BILLFORWARD_PRODUCTION_ACCESS_TOKEN = 'prd';
-    const handler = captureHandler(registerCatalogTools, 'call-api');
-    const res = await handler({ name: 'list-accounts', args: { records: 10, offset: 0 } });
-    expect(res.isError).toBe(true);
-    expect(res.content[0].text).toMatch(/Multiple environments are configured/);
+  it("getClient default is used by tools when environment is omitted (no multi-env error)", () => {
+    process.env.BILLFORWARD_SANDBOX_ACCESS_TOKEN = "sbx";
+    process.env.BILLFORWARD_PRODUCTION_ACCESS_TOKEN = "prd";
+    expect(() => getClient()).not.toThrow();
+    expect(getClient().defaults.params.access_token).toBe("sbx");
   });
 
   it("call-api blocks writes in a read-only environment", async () => {
@@ -169,7 +185,8 @@ describe('tool wiring surfaces resolver errors', () => {
 
     expect(text).toContain("dev: sandbox, read-only");
     expect(text).toContain("prod: production, write-enabled");
-    expect(text).toContain("Pass `environment` on each tool call");
+    expect(text).toContain("Omit `environment` to default to the first sandbox");
+    expect(text).toContain("environment=sandbox");
     expect(text).not.toContain("dev-secret");
     expect(text).not.toContain("prod-secret");
     expect(text).not.toContain("https://");

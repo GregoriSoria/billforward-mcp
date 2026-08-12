@@ -6,7 +6,8 @@ export function registerGeneralTools(server: McpServer) {
   server.registerTool(
     "help",
     {
-      description: "Get concise developer guidance on available Billforward MCP tools and entities. Use this if you are unsure which tool to use."
+      description:
+        "Short guide: which Billforward MCP tool to use (lookup vs catalog vs customer summary) and configured environments.",
     },
     async () => {
       try {
@@ -21,33 +22,33 @@ export function registerGeneralTools(server: McpServer) {
           : "No Billforward environment is configured yet.";
         const choiceHint =
           configured.length > 1
-            ? "\nPass `environment` on each tool call to choose one."
+            ? "\nOmit `environment` to default to the first sandbox (never production). " +
+              "Pass `environment=sandbox` as an alias for that sandbox, or an exact name (dev/staging/prod)."
             : "";
 
         const helpText = `
 # Billforward MCP - Developer Guide
 
 ## Always-on discovery tools
-- **\`lookup\`**: Prefixed ID (\`ACC-\`, \`CDT-\`, …) → GET by id; email/free text → \`/search-v3\`. Pass \`resource=\` for UUID-only entities.
-- **\`search-tools\`**: Keyword search over the API catalog → matching operation names.
-- **\`describe-tool\`**: Full schema for one catalog entry (method, path, params).
-- **\`call-api\`**: Execute a catalog entry by name. Writes need a write-enabled environment.
+- **\`lookup\`**: Prefer for prefixed IDs (\`ACC-\`, \`CDT-\`, \`PAY-\`, …) OR free text (company/hotel name, email) via \`/search-v3\`.
+- **\`search-tools\`** → **\`describe-tool\`** → **\`call-api\`**: Lists/writes and anything without an always-on tool (payments, credit-notes-by-account, …).
 - **\`help\`**, **\`get-me\`**: This guide and credential check.
 
 ## Workflow
-1. **Find something**: \`lookup query="email or ACC-…"\` for IDs and text search.
-2. **List or write anything else**: \`search-tools\` → \`describe-tool\` → \`call-api\`.
-3. **Metadata cheat sheet**: \`get-metadata-schema\` for custom field keys.
-4. **Customer 360**: \`get-customer-summary query="email/ID"\`.
+1. **ID or name search**: \`lookup\` (not \`find-accounts\` for company names).
+2. **List/write**: \`search-tools\` → \`call-api\` (describe-tool if you need params).
+3. **Active sub / dunning**: \`get-customer-summary\` by email or ACC- (not credit-note or payment lists).
+4. **Metadata keys**: \`get-metadata-schema\`.
 
 ## Convenience tools (not in catalog)
-- **Accounts**: \`find-accounts\`, \`get-account-history\`
-- **Insights**: \`get-customer-summary\`, \`get-metadata-schema\`
+- **\`find-accounts\`**: exact ID, email, or metadata only — not company names.
+- **\`get-account-history\`**: account + subs + invoices — no credit notes/payments.
+- **\`get-customer-summary\`**: 360 dashboard — no credit-note/payment lists.
 
 ## Tips
-- List/write ops (\`list-accounts\`, \`list-payments\`, \`create-account\`, …): \`search-tools\` → \`describe-tool\` → \`call-api\`.
-- Metadata filters: \`call-api name="list-accounts" args={"meta.<key>":"<value>"}\` or \`find-accounts\` → \`meta.<key>=<value>\`. \`lookup\` does not support metadata syntax.
-- Invoice metadata: \`lookup\` with an invoice ID, or \`call-api\` on \`/invoices/{id}/metadata\` once in catalog.
+- Prefix map: \`CDT-\` credit note, \`PAY-\` payment, \`REC-\` receipt, \`INV-\` invoice, \`SUB-\` subscription, \`ACC-\` account.
+- "Sandbox" in chat ≠ env name; omit \`environment\` or pass \`sandbox\`/\`dev\`.
+- Metadata: \`find-accounts\` or \`call-api list-accounts\` with \`meta.<key>\`. \`lookup\` has no metadata filters.
 
 ## Configured Environments
 ${environmentStatus}${choiceHint}

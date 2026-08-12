@@ -46,6 +46,24 @@ describe('executeCatalogEntry', () => {
     );
   });
 
+  it('uppercases order and maps orderBy → order_by', async () => {
+    mock.onGet('/payments').reply((config) => {
+      expect(config.params).toMatchObject({ order_by: 'created', order: 'DESC', records: 3 });
+      return [200, { results: [] }];
+    });
+    await executeCatalogEntry(
+      client,
+      {
+        name: 'list-payments',
+        summary: 'x',
+        method: 'GET' as const,
+        path: '/payments',
+        queryParams: ['records', 'offset', 'order_by', 'order'],
+      },
+      { records: 3, orderBy: 'created', order: 'desc' },
+    );
+  });
+
   it('POSTs body keys for write entries', async () => {
     mock.onPost('/charges').reply((config) => {
       expect(JSON.parse(config.data)).toMatchObject({ accountId: 'ACC-1', amount: 10 });

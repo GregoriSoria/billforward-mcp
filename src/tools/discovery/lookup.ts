@@ -11,7 +11,8 @@ export function registerLookupTools(server: McpServer) {
     "lookup",
     {
       description:
-        "Resolve a Billforward prefixed ID via GET /{resource}/{id}, or search with GET /search-v3?query= for email/free text. Pass resource= for UUID-only entities.",
+        "Prefer this for any prefixed Billforward ID (ACC-, SUB-, INV-, PAY-, REC-, CDT-, …) or free-text search (company name, email, Hotel Mio, etc.) via /search-v3. " +
+        "Do not use find-accounts for company names. Pass resource= only for UUID-only entities.",
       inputSchema: {
         ...environmentParam,
         query: z.string().min(1),

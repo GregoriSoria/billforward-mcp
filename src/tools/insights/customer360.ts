@@ -11,7 +11,9 @@ export function registerInsightTools(server: McpServer) {
   server.registerTool(
     "get-customer-summary",
     {
-      description: "Provides a 360-degree view of a customer. Combines account details, active subscriptions, credit balances, and recent invoice history into one compact dashboard. Use this for quick context before troubleshooting or churn analysis.",
+      description:
+        "Customer 360 by email or ACC- id: account, subscriptions (state/dunning), credit balances, recent invoices. " +
+        "Use for active-sub / dunning panoramas. Does NOT list credit notes or payments — use search-tools → call-api for those.",
       inputSchema: {
         ...environmentParam,
         query: z.string().describe("Email or Account ID (ACC-XXXX)")

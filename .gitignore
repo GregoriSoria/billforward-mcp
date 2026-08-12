@@ -3,3 +3,6 @@ build/
 .env
 .pnpm-store/
 .worktrees/
+
+# local Cursor MCP (no secrets, but machine-local paths)
+.cursor/mcp.json

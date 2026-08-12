@@ -9,7 +9,8 @@ export function registerCatalogTools(server: McpServer) {
     "search-tools",
     {
       description:
-        "Keyword search over the Billforward API catalog. Returns matching operation names and one-line summaries. Follow with describe-tool, then call-api.",
+        "Search the Billforward API catalog when no always-on tool fits (lists, writes, credit-notes-by-account, payments, receipts, etc.). " +
+        "Returns operation names — then describe-tool (optional) and call-api. Not for single-ID lookup (use lookup).",
       inputSchema: {
         query: z.string().min(1),
         limit: z.number().int().positive().optional().default(10),
@@ -48,7 +49,8 @@ export function registerCatalogTools(server: McpServer) {
     "call-api",
     {
       description:
-        "Execute a named catalog entry. Writes require a write-enabled environment. Discover operations via search-tools and describe-tool.",
+        "Run a catalog operation by exact name from search-tools (e.g. list-payments, list-credit-notes-by-account). " +
+        "Writes need a write-enabled environment. Prefer lookup for single prefixed IDs.",
       inputSchema: {
         ...environmentParam,
         name: z.string().describe("Exact catalog entry name from search-tools / describe-tool"),

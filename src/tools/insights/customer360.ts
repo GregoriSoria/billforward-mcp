@@ -4,14 +4,16 @@ import { getClient, environmentParam } from "../../billforward.js";
 import { readResource } from "../read-diagnostics.js";
 
 export function metadataSchemaUsageTip() {
-  return "Use exact metadata filters as meta.<key>=<value> with list-accounts or find-accounts. Search supports exact email/ID lookup or a bounded local company-name scan; it does not support metadata query syntax. Invoice metadata isn't embedded by default — pass includeMetadata=true to list-invoices, or use get-invoice, to fetch it.";
+  return "Use exact metadata filters as meta.<key>=<value> with call-api list-accounts or find-accounts. Use lookup for email/ID search; it does not support metadata query syntax. Invoice metadata isn't embedded in list payloads — use lookup with an invoice ID to fetch the full record.";
 }
 
 export function registerInsightTools(server: McpServer) {
   server.registerTool(
     "get-customer-summary",
     {
-      description: "Provides a 360-degree view of a customer. Combines account details, active subscriptions, credit balances, and recent invoice history into one compact dashboard. Use this for quick context before troubleshooting or churn analysis.",
+      description:
+        "Customer 360 by email or ACC- id: account, subscriptions (state/dunning), credit balances, recent invoices. " +
+        "Use for active-sub / dunning panoramas. Does NOT list credit notes or payments — use search-tools → call-api for those.",
       inputSchema: {
         ...environmentParam,
         query: z.string().describe("Email or Account ID (ACC-XXXX)")

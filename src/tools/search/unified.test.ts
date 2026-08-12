@@ -9,33 +9,18 @@ vi.mock('../../billforward.js', () => ({
 }));
 
 import { getClient } from '../../billforward.js';
-import { registerInvoiceTools } from '../customers/invoices.js';
 import { metadataSchemaUsageTip, registerInsightTools } from '../insights/customer360.js';
-import { registerSearchTools } from './unified.js';
 
-type SearchHandler = (input: Record<string, unknown>) => Promise<{ content: Array<{ text: string }> }>;
+type Handler = (input: Record<string, unknown>) => Promise<{ content: Array<{ text: string }> }>;
 
 function textOutput(result: Promise<{ content: Array<{ text: string }> }>) {
   return result.then(({ content }) => JSON.parse(content[0].text));
 }
 
-function searchTool() {
-  let handler: SearchHandler | undefined;
-  let definition: { inputSchema: Record<string, { safeParse(input: unknown): { success: boolean } }> } | undefined;
-  registerSearchTools({
-    registerTool: (_name: string, toolDefinition: typeof definition, callback: SearchHandler) => {
-      definition = toolDefinition;
-      handler = callback;
-    },
-  } as any);
-  if (!handler || !definition) throw new Error('search tool was not registered');
-  return { handler, definition };
-}
-
 function namedTool(register: (server: any) => void, name: string) {
-  let handler: SearchHandler | undefined;
+  let handler: Handler | undefined;
   register({
-    registerTool: (toolName: string, _definition: unknown, callback: SearchHandler) => {
+    registerTool: (toolName: string, _definition: unknown, callback: Handler) => {
       if (toolName === name) handler = callback;
     },
   });
@@ -141,86 +126,10 @@ describe('read diagnostics', () => {
   });
 });
 
-describe('search', () => {
-  const client = axios.create();
-  // @ts-ignore - axios-mock-adapter resolution-mode type mismatch
-  const mock = new MockAdapter(client);
-  const { handler, definition } = searchTool();
-
-  beforeEach(() => {
-    mock.reset();
-    vi.mocked(getClient).mockReturnValue(client as any);
-  });
-
-  it('uses the dedicated email endpoint for an exact account lookup', async () => {
-    mock.onGet('/accounts/email/billing@example.test').reply(200, { results: [{ id: 'ACC-1' }] });
-
-    await handler({ query: 'billing@example.test', entity: 'accounts', match: 'exact', limit: 5 });
-
-    expect(mock.history.get.map(r => r.url)).toContain('/accounts/email/billing@example.test');
-    expect(mock.history.get.some(r => r.params?.filter)).toBe(false);
-  });
-
-  it.each(['   ', '---'])('rejects a query that normalizes to empty: %j', (query) => {
-    expect(definition.inputSchema.query.safeParse(query).success).toBe(false);
-  });
-
-  it.each([0, -1, 1.5])('rejects a non-positive-integer limit: %s', (limit) => {
-    expect(definition.inputSchema.limit.safeParse(limit).success).toBe(false);
-  });
-
-  it('does not return a non-equal company name for match=exact', async () => {
-    mock.onGet('/accounts').reply(200, { results: [{ id: 'ACC-OTHER', profile: { companyName: 'Acme Holdings' } }] });
-
-    const output = await textOutput(handler({ query: 'Acme', entity: 'accounts', match: 'exact', limit: 5 }));
-
-    expect(output.accounts).toEqual([]);
-  });
-
-  it('labels a contains company match as approximate', async () => {
-    mock.onGet('/accounts').reply(200, { results: [{ id: 'ACC-1', profile: { companyName: 'Acme Holdings' } }] });
-
-    const output = await textOutput(handler({ query: 'Acme', entity: 'accounts', match: 'contains', limit: 5 }));
-
-    expect(output.accounts[0]).toMatchObject({ id: 'ACC-1', match: 'companyName-contains-local', approximate: true });
-  });
-
-  it('does not call subscriptions or invoices when entity=accounts', async () => {
-    mock.onGet('/accounts/ACC-1').reply(200, { results: [{ id: 'ACC-1' }] });
-
-    await handler({ query: 'ACC-1', entity: 'accounts', match: 'exact', limit: 5 });
-
-    expect(mock.history.get.map(r => r.url)).not.toContain('/subscriptions/ACC-1');
-    expect(mock.history.get.map(r => r.url)).not.toContain('/invoices');
-  });
-
-  it('reports a bounded company scan as truncated when more accounts exist', async () => {
-    mock.onGet('/accounts').reply(200, { totalRecords: 201, results: [{ id: 'ACC-1', profile: { companyName: 'Acme' } }] });
-
-    const output = await textOutput(handler({ query: 'Acme', entity: 'accounts', match: 'exact', limit: 5 }));
-
-    expect(output.truncated).toBe(true);
-    expect(output.diagnostics[0]).toMatchObject({ resource: 'accounts', endpoint: '/accounts' });
-  });
-
-  it('reports truncation when the result limit stops within a page', async () => {
-    mock.onGet('/accounts').reply(200, { results: [
-      { id: 'ACC-1', profile: { companyName: 'Acme' } },
-      { id: 'ACC-2', profile: { companyName: 'Acme' } },
-    ] });
-
-    const output = await textOutput(handler({ query: 'Acme', entity: 'accounts', match: 'exact', limit: 1 }));
-
-    expect(output.accounts).toHaveLength(1);
-    expect(output.truncated).toBe(true);
-  });
-});
-
 describe('adjacent read guidance', () => {
   const client = axios.create();
   // @ts-ignore - axios-mock-adapter resolution-mode type mismatch
   const mock = new MockAdapter(client);
-  const invoiceHandler = namedTool(registerInvoiceTools, 'get-invoice');
   const customerSummaryHandler = namedTool(registerInsightTools, 'get-customer-summary');
 
   beforeEach(() => {
@@ -231,15 +140,6 @@ describe('adjacent read guidance', () => {
   it('does not advertise key-value syntax for search metadata', () => {
     expect(metadataSchemaUsageTip()).not.toContain("search query using 'key: value'");
     expect(metadataSchemaUsageTip()).toContain('meta.<key>=<value>');
-  });
-
-  it('returns invoice metadata fetch failures as diagnostics rather than swallowing them', async () => {
-    mock.onGet('/invoices/INV-1').reply(200, { results: [{ id: 'INV-1' }] });
-    mock.onGet('/invoices/INV-1/metadata').reply(500);
-
-    const output = await textOutput(invoiceHandler({ invoiceId: 'INV-1' }));
-
-    expect(output.errors).toContainEqual(expect.objectContaining({ resource: 'invoice-metadata', status: 500 }));
   });
 
   it('uses account-scoped endpoints for the customer summary and returns resource failures', async () => {

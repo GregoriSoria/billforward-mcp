@@ -230,6 +230,8 @@ Minimum migration table to include:
 
 Bump the npm major version when the removed tools disappear from `tools/list`.
 
+**Shipped in 2.0.0:** root `CHANGELOG.md` (in npm tarball via `package.json` `files`), README short upgrade section + GitHub link — not the full history inlined on the npm page.
+
 ## Why sfskills needs a search index (and we do not)
 
 sfskills is not a second network “vector server.” It ships an MCP process that

@@ -23,22 +23,14 @@ import { registerGeneralTools } from "./tools/overview/general.js";
 registerGeneralTools(server);
 
 import { registerAccountTools } from "./tools/customers/accounts.js";
-import { registerSubscriptionTools } from "./tools/customers/subscriptions.js";
-import { registerInvoiceTools } from "./tools/customers/invoices.js";
-import { registerPaymentTools } from "./tools/customers/payments.js";
-import { registerChargeTools } from "./tools/customers/charges.js";
-import { registerPlanTools } from "./tools/pricing/plans.js";
-import { registerSearchTools } from "./tools/search/unified.js";
+import { registerCatalogTools } from "./tools/discovery/catalog-tools.js";
+import { registerLookupTools } from "./tools/discovery/lookup.js";
 import { registerInsightTools } from "./tools/insights/customer360.js";
 
 // --- Domain Tools Registration ---
 registerAccountTools(server);
-registerSubscriptionTools(server);
-registerInvoiceTools(server);
-registerPaymentTools(server);
-registerChargeTools(server);
-registerPlanTools(server);
-registerSearchTools(server);
+registerLookupTools(server);
+registerCatalogTools(server);
 registerInsightTools(server);
 
 // Main function to initialize the stdio transport

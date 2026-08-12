@@ -15,11 +15,21 @@ export const environmentParam = {
     .regex(ENVIRONMENT_NAME_PATTERN)
     .optional()
     .describe(
-      "Named Billforward environment to target, such as dev, staging, or production. " +
-        "Required when multiple environments are configured; if only one is configured it is used automatically. " +
-        "Use help to see configured names and ask the user if unsure.",
+      "Named Billforward environment (e.g. dev, staging, prod). " +
+        "Omit to use the first sandbox automatically when several are configured (never defaults to production). " +
+        "Alias: `sandbox` resolves to the first sandbox-typed environment if that name is not configured. " +
+        "Use help for configured names.",
     ),
 };
+
+function firstSandboxName(
+  environments: ReturnType<typeof resolveEnvironments>,
+): Environment | undefined {
+  for (const [name, config] of environments) {
+    if (config.type === "sandbox") return name;
+  }
+  return undefined;
+}
 
 function createClient(token: string, baseUrl: string): AxiosInstance {
   const client = axios.create({
@@ -73,27 +83,48 @@ export function getClient(
   let selected: Environment;
 
   if (environment) {
-    selected = environment;
-    if (!environments.has(selected)) {
+    if (environments.has(environment)) {
+      selected = environment;
+    } else if (environment === "sandbox") {
+      // ponytail: users say "sandbox"; named catalogs often use dev/staging — alias once.
+      const alias = firstSandboxName(environments);
+      if (!alias) {
+        throw new Error(
+          `The 'sandbox' environment is not configured on this server.` +
+            (available.length ? ` Available: ${available.join(", ")}.` : " No Billforward token is configured."),
+        );
+      }
+      selected = alias;
+    } else {
+      const sandbox = firstSandboxName(environments);
+      const aliasHint =
+        sandbox && sandbox !== "sandbox"
+          ? ` The word "sandbox" is not a name here — use \`${sandbox}\`, or pass \`environment=sandbox\` as an alias for the first sandbox.`
+          : "";
       const hint = available.length
-        ? ` Available: ${available.join(', ')}.${available.length === 1 ? ` Omit the \`environment\` parameter to use ${available[0]} automatically.` : ''}`
-        : ' No Billforward token is configured.';
-      throw new Error(`The '${selected}' environment is not configured on this server.${hint}`);
+        ? ` Available: ${available.join(", ")}.${available.length === 1 ? ` Omit \`environment\` to use ${available[0]}.` : ` Omit \`environment\` to default to the first sandbox.`}${aliasHint}`
+        : " No Billforward token is configured.";
+      throw new Error(`The '${environment}' environment is not configured on this server.${hint}`);
     }
   } else {
     if (available.length === 0) {
       throw new Error(
-        'No Billforward token is configured. Ask the user to set BILLFORWARD_ENVIRONMENTS, ' +
-          'BILLFORWARD_SANDBOX_ACCESS_TOKEN, BILLFORWARD_PRODUCTION_ACCESS_TOKEN, or BILLFORWARD_ACCESS_TOKEN.',
+        "No Billforward token is configured. Ask the user to set BILLFORWARD_ENVIRONMENTS, " +
+          "BILLFORWARD_SANDBOX_ACCESS_TOKEN, BILLFORWARD_PRODUCTION_ACCESS_TOKEN, or BILLFORWARD_ACCESS_TOKEN.",
       );
     }
-    if (available.length > 1) {
-      throw new Error(
-        `Multiple environments are configured (${available.join(', ')}). ` +
-          'Re-call this tool with the `environment` parameter set to one of them.',
-      );
+    if (available.length === 1) {
+      selected = available[0];
+    } else {
+      const sandbox = firstSandboxName(environments);
+      if (!sandbox) {
+        throw new Error(
+          `Multiple environments are configured (${available.join(", ")}) and none are sandbox. ` +
+            "Re-call with the `environment` parameter set to one of them.",
+        );
+      }
+      selected = sandbox;
     }
-    selected = available[0];
   }
 
   const config = environments.get(selected)!;

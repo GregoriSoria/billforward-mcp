@@ -6,7 +6,8 @@ export function registerGeneralTools(server: McpServer) {
   server.registerTool(
     "help",
     {
-      description: "Get concise developer guidance on available Billforward MCP tools and entities. Use this if you are unsure which tool to use."
+      description:
+        "Short guide: which Billforward MCP tool to use (lookup vs catalog vs customer summary) and configured environments.",
     },
     async () => {
       try {
@@ -21,28 +22,33 @@ export function registerGeneralTools(server: McpServer) {
           : "No Billforward environment is configured yet.";
         const choiceHint =
           configured.length > 1
-            ? "\nPass `environment` on each tool call to choose one."
+            ? "\nOmit `environment` to default to the first sandbox (never production). " +
+              "Pass `environment=sandbox` as an alias for that sandbox, or an exact name (dev/staging/prod)."
             : "";
 
         const helpText = `
 # Billforward MCP - Developer Guide
 
-## Core Tools
-- **Insights**: \`get-customer-summary\`, \`get-metadata-schema\`
-- **Accounts**: \`list-accounts\`, \`get-account\`, \`get-account-by-email\`
-- **Subscriptions**: \`list-subscriptions\`, \`get-subscription\`
-- **Invoices**: \`list-invoices\`, \`get-invoice\`
-- **Payments**: \`list-payments\`, \`get-payment\`, \`list-receipts\`
-- **Pricing**: \`list-products\`, \`list-product-rate-plans\`
+## Always-on discovery tools
+- **\`lookup\`**: Prefer for prefixed IDs (\`ACC-\`, \`CDT-\`, \`PAY-\`, …) OR free text (company/hotel name, email) via \`/search-v3\`.
+- **\`search-tools\`** → **\`describe-tool\`** → **\`call-api\`**: Lists/writes and anything without an always-on tool (payments, credit-notes-by-account, …).
+- **\`help\`**, **\`get-me\`**: This guide and credential check.
 
-## Search & Analysis Strategy
-1. **Discover Metadata**: Run \`get-metadata-schema\` to see available custom fields for filtering.
-2. **Fast Search**: Use \`search query="email or ID"\` for an exact lookup. A company name triggers a bounded local account-name scan; use \`match="contains"\` only for approximate matches.
-3. **Deep Dive**: Use \`get-customer-summary query="email/ID"\` for a full 360 overview of a client.
-4. **Time Filtering**: \`list-accounts\` supports real \`created_after\`/\`created_before\` filters. \`list-invoices\`/\`list-subscriptions\` only support \`period_start_after\`/\`period_start_before\` (Billforward has no native created-date filter for those resources). \`list-payments\`/\`list-receipts\` accept \`created_after\`/\`created_before\` but filter client-side since Billforward has no native date filter on those endpoints at all.
-5. **Technical Filter**: Use \`list-accounts metadata={...}\` or \`find-accounts metadata={...}\`; these become exact API parameters such as \`meta.salesforce_account_id=001xx\`. Search does not support metadata key-value syntax.
-6. **Account History**: Use \`get-account-history\` for documented account-scoped subscriptions and invoices. Its payments block is unavailable because no account-scoped payments endpoint is confirmed.
-7. **Activity Caveat**: Business history and webhooks/notifications do not necessarily represent API request logs.
+## Workflow
+1. **ID or name search**: \`lookup\` (not \`find-accounts\` for company names).
+2. **List/write**: \`search-tools\` → \`call-api\` (describe-tool if you need params).
+3. **Active sub / dunning**: \`get-customer-summary\` by email or ACC- (not credit-note or payment lists).
+4. **Metadata keys**: \`get-metadata-schema\`.
+
+## Convenience tools (not in catalog)
+- **\`find-accounts\`**: exact ID, email, or metadata only — not company names.
+- **\`get-account-history\`**: account + subs + invoices — no credit notes/payments.
+- **\`get-customer-summary\`**: 360 dashboard — no credit-note/payment lists.
+
+## Tips
+- Prefix map: \`CDT-\` credit note, \`PAY-\` payment, \`REC-\` receipt, \`INV-\` invoice, \`SUB-\` subscription, \`ACC-\` account.
+- "Sandbox" in chat ≠ env name; omit \`environment\` or pass \`sandbox\`/\`dev\`.
+- Metadata: \`find-accounts\` or \`call-api list-accounts\` with \`meta.<key>\`. \`lookup\` has no metadata filters.
 
 ## Configured Environments
 ${environmentStatus}${choiceHint}

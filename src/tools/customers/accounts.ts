@@ -37,7 +37,9 @@ export function registerAccountTools(server: McpServer) {
   server.registerTool(
     "find-accounts",
     {
-      description: "Find accounts using exactly one explicit lookup: account ID, exact profile email, or account metadata. A company-name lookup is intentionally not supported here.",
+      description:
+        "Find accounts by exactly one of: account ID, exact profile email, or metadata filter. " +
+        "NOT for company/hotel names or free text — use lookup instead.",
       inputSchema: {
         ...environmentParam,
         accountId: z.string().optional().describe("Exact account ID"),
@@ -71,7 +73,9 @@ export function registerAccountTools(server: McpServer) {
   server.registerTool(
     "get-account-history",
     {
-      description: "Read one account with its account-scoped subscriptions and invoices. Payment history is unavailable because no account-scoped payments endpoint has been confirmed.",
+      description:
+        "Read one account plus its subscriptions and invoices. " +
+        "Does NOT include credit notes or payments — use search-tools → call-api (list-credit-notes-by-account / list-payments) for those.",
       inputSchema: {
         ...environmentParam,
         accountId: z.string().min(1).describe("Exact account ID"),
@@ -112,200 +116,5 @@ export function registerAccountTools(server: McpServer) {
         return { isError: true, content: [{ type: "text", text: `Account history failed: ${error.message}` }] };
       }
     },
-  );
-
-  server.registerTool(
-    "list-accounts",
-    {
-      description: "List merchant accounts with support for pagination, sorting, and metadata filtering. Available fields include id, crmID, userID, created, updated, and an embedded profile (email, names, address). Use metadata filtering via 'meta.key=value'.",
-      inputSchema: {
-        ...environmentParam,
-        limit: z.number().optional().default(DEFAULT_RECORDS_LIMIT).describe(`Number of records to return (Default: ${DEFAULT_RECORDS_LIMIT}, Hard Max: ${MAX_RECORDS_LIMIT})`),
-        offset: z.number().optional().default(0).describe("Number of records to skip for pagination"),
-        orderBy: z.string().optional().default("created").describe("Field to order results by (e.g., 'created', 'id', 'crmID')"),
-        orderDirection: z.enum(["ASC", "DESC"]).optional().default("DESC").describe("Direction of sorting"),
-        metadata: z.record(z.string(), z.string()).optional().describe("Filter by account metadata. Example: {'internal_id': '123'}"),
-        created_after: z.string().optional().describe("Filter records created after this ISO date (e.g. '2023-01-01T00:00:00Z')"),
-        created_before: z.string().optional().describe("Filter records created before this ISO date")
-      }
-    },
-    async ({ environment, limit, offset, orderBy, orderDirection, metadata, created_after, created_before }) => {
-      try {
-        const client = getClient(environment);
-        const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
-        const params: any = {
-          records: safeLimit,
-          offset,
-          order_by: orderBy,
-          order: orderDirection
-        };
-
-        // Inject metadata filters with meta. prefix
-        if (metadata) {
-          Object.entries(metadata).forEach(([key, value]) => {
-            params[`meta.${key}`] = value;
-          });
-        }
-
-        const response = (created_after || created_before)
-          ? await client.get(
-              `/accounts/created/${encodeURIComponent(created_after || "1970-01-01T00:00:00")}/${encodeURIComponent(created_before || "2100-01-01T00:00:00")}`,
-              { params }
-            )
-          : await client.get("/accounts", { params });
-
-        return {
-          content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error listing accounts: ${error.message}` }]
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    "get-account-by-email",
-    {
-      description: "Find an account specifically by their email address. This is the fastest way to find a customer if you have their email.",
-      inputSchema: {
-        ...environmentParam,
-        email: z.string().email().describe("The exact email address of the account profile")
-      }
-    },
-    async ({ environment, email }) => {
-      try {
-        const client = getClient(environment);
-        const response = await client.get(`/accounts/email/${email}`);
-        return {
-          content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error finding account by email ${email}: ${error.message}` }]
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    "get-account",
-    {
-      description: "Get detailed information about a specific account by ID. Contains billing contact info and linked metadata.",
-      inputSchema: {
-        ...environmentParam,
-        accountId: z.string().describe("The unique UUID of the account (e.g., 'ACC-XXXX-XXXX')")
-      }
-    },
-    async ({ environment, accountId }) => {
-      try {
-        const client = getClient(environment);
-        const response = await client.get(`/accounts/${accountId}`);
-        return {
-          content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error retrieving account ${accountId}: ${error.message}` }]
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    "list-profiles",
-    {
-      description: "List all account profiles. Profiles contain contact details like firstName, lastName, email, and address fields.",
-      inputSchema: {
-        ...environmentParam,
-        limit: z.number().optional().default(DEFAULT_RECORDS_LIMIT).describe(`Number of records to return (Hard Max: ${MAX_RECORDS_LIMIT})`),
-        offset: z.number().optional().default(0).describe("Number of records to skip")
-      }
-    },
-    async ({ environment, limit, offset }) => {
-      try {
-        const client = getClient(environment);
-        const safeLimit = Math.min(limit, MAX_RECORDS_LIMIT);
-        const response = await client.get("/profiles", {
-          params: { records: safeLimit, offset } 
-        });
-        return {
-          content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error listing profiles: ${error.message}` }]
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    "create-account",
-    {
-      description: "Create a new account in Billforward. This is the first step for new customers.",
-      inputSchema: {
-        ...environmentParam,
-        profile: z.object({
-          email: z.string().email().describe("Primary email address for the account"),
-          firstName: z.string().describe("Legal first name"),
-          lastName: z.string().describe("Legal last name")
-        }).describe("The profile information for the new account")
-      }
-    },
-    async ({ environment, profile }) => {
-      try {
-        const client = getClient(environment, { write: true });
-        const response = await client.post("/accounts", {
-          profile
-        });
-        return {
-          content: [{ type: "text", text: `Account created successfully:\n${JSON.stringify(response.data, null, 2)}` }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error creating account: ${error.message}` }]
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    "update-account",
-    {
-      description: "Update an existing account profile. Billforward uses PUT for updates, so pass all relevant profile fields.",
-      inputSchema: {
-        ...environmentParam,
-        accountId: z.string().describe("The UUID of the account to update"),
-        profile: z.object({
-          email: z.string().email().optional().describe("Updated email address"),
-          firstName: z.string().optional().describe("Updated first name"),
-          lastName: z.string().optional().describe("Updated last name")
-        }).describe("The updated profile fields")
-      }
-    },
-    async ({ environment, accountId, profile }) => {
-      try {
-        const client = getClient(environment, { write: true });
-        const response = await client.put("/accounts", {
-          id: accountId,
-          profile
-        });
-        return {
-          content: [{ type: "text", text: `Account updated successfully:\n${JSON.stringify(response.data, null, 2)}` }]
-        };
-      } catch (error: any) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error updating account ${accountId}: ${error.message}` }]
-        };
-      }
-    }
   );
 }

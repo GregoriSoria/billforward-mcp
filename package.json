@@ -1,6 +1,6 @@
 {
   "name": "billforward-mcp",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A Model Context Protocol (MCP) server for integrating Billforward's billing API with LLMs.",
   "repository": {
     "type": "git",
@@ -23,6 +23,7 @@
   },
   "files": [
     "build",
+    "README.md",
     "CHANGELOG.md"
   ],
   "keywords": [

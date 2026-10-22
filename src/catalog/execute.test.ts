@@ -98,6 +98,14 @@ describe('executeCatalogEntry', () => {
     });
   });
 
+  it('DELETEs a rate plan by id with no body', async () => {
+    mock.onDelete('/product-rate-plans/PRP-1').reply((config) => {
+      expect(config.data).toBeUndefined();
+      return [200, { results: [] }];
+    });
+    await executeCatalogEntry(client, getCatalogEntry('retire-product-rate-plan')!, { id: 'PRP-1' });
+  });
+
   it('POSTs a new rate plan to /product-rate-plans', async () => {
     mock.onPost('/product-rate-plans').reply((config) => {
       expect(JSON.parse(config.data)).toEqual({ productID: 'PRO-1', currency: 'USD', name: 'gold' });

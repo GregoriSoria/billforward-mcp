@@ -189,6 +189,16 @@ export const CATALOG: CatalogEntry[] = [
     write: true,
   },
   {
+    name: 'retire-product-rate-plan',
+    summary:
+      'Retire (delete) a product rate plan by id: sets validTill to now and hides it from list-product-rate-plans; ' +
+      'still readable via lookup PRP-…',
+    method: 'DELETE',
+    path: '/product-rate-plans/{id}',
+    pathParams: ['id'],
+    write: true,
+  },
+  {
     name: 'create-charge',
     summary: 'Create a one-off charge for an account',
     method: 'POST',

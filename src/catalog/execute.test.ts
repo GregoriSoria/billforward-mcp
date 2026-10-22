@@ -98,6 +98,26 @@ describe('executeCatalogEntry', () => {
     });
   });
 
+  it('forwards include_retired when listing rate plans', async () => {
+    mock.onGet('/product-rate-plans').reply((config) => {
+      expect(config.params).toEqual({ records: 50, include_retired: true });
+      return [200, { results: [] }];
+    });
+    await executeCatalogEntry(client, getCatalogEntry('list-product-rate-plans')!, { records: 50, include_retired: true });
+  });
+
+  it('drops metadata from create-product, which BF rejects on POST /products', async () => {
+    mock.onPost('/products').reply((config) => {
+      expect(JSON.parse(config.data)).toEqual({ name: 'p', productType: 'recurring' });
+      return [200, { results: [] }];
+    });
+    await executeCatalogEntry(client, getCatalogEntry('create-product')!, {
+      name: 'p',
+      productType: 'recurring',
+      metadata: { k: 'v' },
+    });
+  });
+
   it('DELETEs a rate plan by id with no body', async () => {
     mock.onDelete('/product-rate-plans/PRP-1').reply((config) => {
       expect(config.data).toBeUndefined();

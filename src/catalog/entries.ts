@@ -23,6 +23,13 @@ const RATE_PLAN_BODY = [
   'generateServiceEndInvoice',
 ] as const;
 
+// Same idea for GET /products/{id}: path is derived from name; deleted is set by retire.
+// No metadata: on dev, POST /products with metadata fails 400 and PUT /products silently ignores it.
+const PRODUCT_BODY = [
+  'name', 'description', 'productType', 'duration', 'durationPeriod', 'trial', 'trialPeriod',
+  'paymentTerms', 'startDate',
+] as const;
+
 export const CATALOG: CatalogEntry[] = [
   {
     name: 'list-accounts',
@@ -82,9 +89,66 @@ export const CATALOG: CatalogEntry[] = [
   },
   {
     name: 'list-product-rate-plans',
-    summary: 'List product rate plans defining subscription pricing',
+    // ponytail: sizes measured on dev/staging/prod in 2026-10; records=200 took 7-12 s against a 15 s timeout.
+    summary:
+      'List product rate plans defining subscription pricing. Retired plans are hidden unless include_retired=true, ' +
+      'which also returns one row per past version (same id, different versionID; dedupe by id when copying). ' +
+      'Plans are heavy (~75 KB each with pricing components): use records<=50 and page with offset; ' +
+      'records=200 is ~9 MB and can time out (504)',
     method: 'GET',
     path: '/product-rate-plans',
+    queryParams: [...LIST_QUERY, 'include_retired'],
+    write: false,
+  },
+  {
+    name: 'create-product',
+    summary:
+      'Create a product (PRO-…), the parent a product rate plan needs: productID must exist in the target tenant ' +
+      'before create-product-rate-plan. Body: name, description, productType (recurring/non-recurring), ' +
+      'duration, durationPeriod (days/months/years), trial, trialPeriod. metadata is not accepted here ' +
+      '(BF answers 400 "No rate plan was found")',
+    method: 'POST',
+    path: '/products',
+    bodyKeys: [...PRODUCT_BODY],
+    write: true,
+  },
+  {
+    name: 'update-product',
+    summary:
+      'Update (edit) a product by id; send the full product from lookup PRO-… with changes applied. ' +
+      'Does not change metadata (BF ignores it on this endpoint)',
+    method: 'PUT',
+    path: '/products',
+    bodyKeys: ['id', ...PRODUCT_BODY],
+    write: true,
+  },
+  {
+    name: 'list-units-of-measure',
+    summary:
+      'List units of measure (UOM-…). Pricing components point at unitOfMeasureID, which differs per tenant: ' +
+      'when copying a plan, match units by name and create-unit-of-measure for any missing one',
+    method: 'GET',
+    path: '/units-of-measure',
+    queryParams: [...LIST_QUERY],
+    write: false,
+  },
+  {
+    name: 'create-unit-of-measure',
+    summary: 'Create a unit of measure. Body: name, displayedAs, rounding (e.g. HALF_EVEN)',
+    method: 'POST',
+    path: '/units-of-measure',
+    bodyKeys: ['name', 'displayedAs', 'rounding'],
+    write: true,
+  },
+  {
+    name: 'list-taxation-strategies',
+    summary:
+      'List taxation strategies (TAX-…) with country, currency, name and percentage. Existing rate plans show links as ' +
+      'taxation: [{taxationStrategyID}], and the IDs differ per tenant: when copying a plan, match by country and currency. ' +
+      'Unverified: sending taxation on create/update-product-rate-plan (or POST /taxation-links) returned 409 ' +
+      '"database integrity" on the dev sandbox for BR/BRL and US/USD; if it fails, link the tax in the BillForward UI',
+    method: 'GET',
+    path: '/taxation-strategies',
     queryParams: [...LIST_QUERY],
     write: false,
   },
@@ -182,7 +246,8 @@ export const CATALOG: CatalogEntry[] = [
       'proRataMode, trial, validTill, invoiceIssueType, paymentTerms, etc. Full replace: send the whole plan from ' +
       'lookup PRP-… with changes applied, and set tiers: [] on EVERY pricingComponents item (tiers sent are ' +
       'APPENDED, duplicating prices; omitting pricingComponents fails with 409). Cannot edit prices, tiers or ' +
-      'pricing components, nor name, productID or path: for new pricing use create-product-rate-plan',
+      'pricing components, nor name, productID or path. To change a price: retire-product-rate-plan, then ' +
+      'create-product-rate-plan with the new pricing (same name/path is allowed only after the old plan is retired)',
     method: 'PUT',
     path: '/product-rate-plans',
     bodyKeys: ['id', ...RATE_PLAN_BODY],
@@ -192,7 +257,8 @@ export const CATALOG: CatalogEntry[] = [
     name: 'retire-product-rate-plan',
     summary:
       'Retire (delete) a product rate plan by id: sets validTill to now and hides it from list-product-rate-plans; ' +
-      'still readable via lookup PRP-…',
+      'still readable via lookup PRP-…. First step of a price change: a new plan with the same name is rejected ' +
+      '(400 "already exists") until the old one is retired',
     method: 'DELETE',
     path: '/product-rate-plans/{id}',
     pathParams: ['id'],

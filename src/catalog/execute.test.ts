@@ -1,6 +1,7 @@
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { getCatalogEntry } from './entries.js';
 import { executeCatalogEntry } from './execute.js';
 
 describe('executeCatalogEntry', () => {
@@ -81,5 +82,29 @@ describe('executeCatalogEntry', () => {
       },
       { accountId: 'ACC-1', name: 'fee', amount: 10, currency: 'USD' },
     );
+  });
+
+  it('PUTs rate plan id and nested pricingComponents, dropping unknown keys', async () => {
+    const pricingComponents = [{ '@type': 'tieredPricingComponent', id: 'PCO-1', tiers: [] }];
+    mock.onPut('/product-rate-plans').reply((config) => {
+      expect(JSON.parse(config.data)).toEqual({ id: 'PRP-1', name: 'gold', pricingComponents });
+      return [200, { results: [] }];
+    });
+    await executeCatalogEntry(client, getCatalogEntry('update-product-rate-plan')!, {
+      id: 'PRP-1',
+      name: 'gold',
+      pricingComponents,
+      environment: 'sandbox',
+    });
+  });
+
+  it('POSTs a new rate plan to /product-rate-plans', async () => {
+    mock.onPost('/product-rate-plans').reply((config) => {
+      expect(JSON.parse(config.data)).toEqual({ productID: 'PRO-1', currency: 'USD', name: 'gold' });
+      return [200, { results: [] }];
+    });
+    const entry = getCatalogEntry('create-product-rate-plan')!;
+    expect(entry.write).toBe(true);
+    await executeCatalogEntry(client, entry, { productID: 'PRO-1', currency: 'USD', name: 'gold' });
   });
 });

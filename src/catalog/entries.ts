@@ -12,6 +12,17 @@ export type CatalogEntry = {
 
 const LIST_QUERY = ['records', 'offset', 'order_by', 'order'] as const;
 
+// Field names taken from a real GET /product-rate-plans/{id} response, minus server-managed ones
+// (versionID, path, displayName — derived from publicName — created/updated, organizationID).
+const RATE_PLAN_BODY = [
+  'productID', 'name', 'publicName', 'description', 'currency', 'productType', 'taxStatus', 'proRataMode',
+  'aggregatingComponents', 'affiliateRatePlanRelationships',
+  'duration', 'durationPeriod', 'trial', 'trialPeriod', 'pricingComponents', 'fixedTermDefinitions',
+  'taxation', 'metadata', 'validFrom', 'validTill', 'invoiceIssueType', 'paymentTerms',
+  'migrationBehaviour', 'failedPaymentBehaviour', 'createZeroValuedInvoices', 'localisedTax',
+  'generateServiceEndInvoice',
+] as const;
+
 export const CATALOG: CatalogEntry[] = [
   {
     name: 'list-accounts',
@@ -151,6 +162,30 @@ export const CATALOG: CatalogEntry[] = [
     method: 'PUT',
     path: '/invoices',
     bodyKeys: ['id', 'state'],
+    write: true,
+  },
+  {
+    name: 'create-product-rate-plan',
+    summary:
+      'Create a product rate plan (pricing plan) under a product; pricingComponents is an array of ' +
+      'BF pricing components, e.g. {"@type":"tieredPricingComponent", tiers, ...}',
+    method: 'POST',
+    path: '/product-rate-plans',
+    bodyKeys: [...RATE_PLAN_BODY],
+    write: true,
+  },
+  {
+    name: 'update-product-rate-plan',
+    // ponytail: limits below were probed on the dev sandbox; BF appends any tiers sent on PUT.
+    summary:
+      'Update (edit) plan-level fields of a product rate plan: publicName, description, metadata, productType, taxStatus, ' +
+      'proRataMode, trial, validTill, invoiceIssueType, paymentTerms, etc. Full replace: send the whole plan from ' +
+      'lookup PRP-… with changes applied, and set tiers: [] on EVERY pricingComponents item (tiers sent are ' +
+      'APPENDED, duplicating prices; omitting pricingComponents fails with 409). Cannot edit prices, tiers or ' +
+      'pricing components, nor name, productID or path: for new pricing use create-product-rate-plan',
+    method: 'PUT',
+    path: '/product-rate-plans',
+    bodyKeys: ['id', ...RATE_PLAN_BODY],
     write: true,
   },
   {
